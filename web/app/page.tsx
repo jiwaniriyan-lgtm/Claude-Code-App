@@ -1,50 +1,30 @@
+import { getTopics, getErrorLog, type TopicRow as TopicRowData, type ErrorLogRow } from "@/lib/sheets";
 import StatCard from "./_components/StatCard";
-import TopicRow, { type Topic } from "./_components/TopicRow";
+import TopicRow from "./_components/TopicRow";
+import RefreshButton from "./_components/RefreshButton";
 
-const SAMPLE_TOPICS: Topic[] = [
-  {
-    topic: "10 Facts About Black Holes",
-    prompt: "Educational, all ages, upbeat narration",
-    status: "done",
-    videoUrl: "https://cdn.example.com/videos/black-holes.mp4",
-    youtubeUrl: "https://youtu.be/abc123",
-    notes: "",
-  },
-  {
-    topic: "How Ocean Currents Work",
-    prompt: "Documentary style, calm music",
-    status: "running",
-    videoUrl: "",
-    youtubeUrl: "",
-    notes: "Rendering at json2video",
-  },
-  {
-    topic: "The History of the Internet",
-    prompt: "Fast-paced, Gen Z audience",
-    status: "pending",
-    videoUrl: "",
-    youtubeUrl: "",
-    notes: "",
-  },
-  {
-    topic: "Why Cats Purr",
-    prompt: "Lighthearted, family friendly",
-    status: "error",
-    videoUrl: "",
-    youtubeUrl: "",
-    notes: "json2video timeout after 600s",
-  },
-  {
-    topic: "Inside the Mariana Trench",
-    prompt: "Mysterious, ambient music",
-    status: "done",
-    videoUrl: "https://cdn.example.com/videos/mariana.mp4",
-    youtubeUrl: "https://youtu.be/def456",
-    notes: "",
-  },
-];
+async function fetchData(): Promise<{
+  topics: TopicRowData[];
+  errors: ErrorLogRow[];
+  warning?: string;
+}> {
+  if (!process.env.SPREADSHEET_ID || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    return {
+      topics: DEMO_TOPICS,
+      errors: DEMO_ERRORS,
+      warning: "Running with demo data. Set SPREADSHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON to connect to Google Sheets.",
+    };
+  }
+  try {
+    const [topics, errors] = await Promise.all([getTopics(), getErrorLog()]);
+    return { topics, errors };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { topics: DEMO_TOPICS, errors: DEMO_ERRORS, warning: `Sheets error: ${msg}` };
+  }
+}
 
-function counts(topics: Topic[]) {
+function counts(topics: TopicRowData[]) {
   return {
     total: topics.length,
     done: topics.filter((t) => t.status === "done").length,
@@ -54,8 +34,9 @@ function counts(topics: Topic[]) {
   };
 }
 
-export default function DashboardPage() {
-  const stats = counts(SAMPLE_TOPICS);
+export default async function DashboardPage() {
+  const { topics, errors, warning } = await fetchData();
+  const stats = counts(topics);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -73,14 +54,24 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-400">Pipeline Dashboard</p>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-xs text-green-400">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            Scheduler active
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-xs text-green-400">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              Scheduler active
+            </span>
+            <RefreshButton />
+          </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col gap-8">
+
+        {/* Demo / warning banner */}
+        {warning && (
+          <div className="rounded-lg border border-yellow-700/50 bg-yellow-950/30 px-4 py-3 text-sm text-yellow-300">
+            {warning}
+          </div>
+        )}
 
         {/* Stats */}
         <section>
@@ -123,25 +114,29 @@ export default function DashboardPage() {
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Topics Queue</h2>
-            <span className="text-xs text-gray-500">{SAMPLE_TOPICS.length} rows</span>
+            <span className="text-xs text-gray-500">{topics.length} rows</span>
           </div>
           <div className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden overflow-x-auto">
-            <table className="w-full text-left min-w-[700px]">
-              <thead>
-                <tr className="border-b border-gray-800 bg-gray-800/50">
-                  {["Topic", "Prompt", "Status", "Video", "YouTube", "Notes"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      {h}
-                    </th>
+            {topics.length === 0 ? (
+              <p className="px-6 py-8 text-sm text-gray-500 text-center">No topics found in the sheet.</p>
+            ) : (
+              <table className="w-full text-left min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-gray-800 bg-gray-800/50">
+                    {["Topic", "Prompt", "Status", "Video", "YouTube", "Notes"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {topics.map((row) => (
+                    <TopicRow key={row.row} row={row} />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {SAMPLE_TOPICS.map((row, i) => (
-                  <TopicRow key={i} row={row} />
-                ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
 
@@ -149,16 +144,17 @@ export default function DashboardPage() {
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Recent Errors</h2>
           <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-4">
-            {SAMPLE_TOPICS.filter((t) => t.status === "error").length === 0 ? (
+            {errors.length === 0 ? (
               <p className="text-sm text-gray-500">No errors. All clear!</p>
             ) : (
               <ul className="space-y-2">
-                {SAMPLE_TOPICS.filter((t) => t.status === "error").map((t, i) => (
+                {errors.map((e, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm">
                     <span className="shrink-0 w-5 h-5 rounded-full bg-red-600/30 text-red-400 flex items-center justify-center text-xs font-bold">!</span>
-                    <div>
-                      <span className="font-medium text-white">{t.topic}</span>
-                      {t.notes && <span className="ml-2 text-gray-400">— {t.notes}</span>}
+                    <div className="min-w-0">
+                      <span className="font-medium text-white">{e.topic}</span>
+                      {e.error && <span className="ml-2 text-gray-400">— {e.error}</span>}
+                      {e.timestamp && <span className="ml-2 text-xs text-gray-600">{e.timestamp}</span>}
                     </div>
                   </li>
                 ))}
@@ -175,3 +171,17 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// ── Demo data (used when env vars are not set) ──────────────────────────────
+
+const DEMO_TOPICS: TopicRowData[] = [
+  { row: 2, topic: "10 Facts About Black Holes", prompt: "Educational, all ages, upbeat narration", status: "done", videoUrl: "https://cdn.example.com/videos/black-holes.mp4", youtubeUrl: "https://youtu.be/abc123", notes: "" },
+  { row: 3, topic: "How Ocean Currents Work", prompt: "Documentary style, calm music", status: "running", videoUrl: "", youtubeUrl: "", notes: "Rendering at json2video" },
+  { row: 4, topic: "The History of the Internet", prompt: "Fast-paced, Gen Z audience", status: "pending", videoUrl: "", youtubeUrl: "", notes: "" },
+  { row: 5, topic: "Why Cats Purr", prompt: "Lighthearted, family friendly", status: "error", videoUrl: "", youtubeUrl: "", notes: "json2video timeout after 600s" },
+  { row: 6, topic: "Inside the Mariana Trench", prompt: "Mysterious, ambient music", status: "done", videoUrl: "https://cdn.example.com/videos/mariana.mp4", youtubeUrl: "https://youtu.be/def456", notes: "" },
+];
+
+const DEMO_ERRORS: ErrorLogRow[] = [
+  { timestamp: "2026-04-28T14:32:00", topic: "Why Cats Purr", error: "json2video timeout after 600s" },
+];

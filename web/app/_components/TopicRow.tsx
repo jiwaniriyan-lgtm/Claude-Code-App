@@ -1,17 +1,9 @@
 "use client";
 
+import type { TopicRow as TopicRowData } from "@/lib/sheets";
 import StatusBadge from "./StatusBadge";
 
-export type Topic = {
-  topic: string;
-  prompt: string;
-  status: string;
-  videoUrl: string;
-  youtubeUrl: string;
-  notes: string;
-};
-
-export default function TopicRow({ row }: { row: Topic }) {
+export default function TopicRow({ row }: { row: TopicRowData }) {
   return (
     <tr className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
       <td className="px-4 py-3 text-sm font-medium text-white max-w-xs truncate">{row.topic}</td>
