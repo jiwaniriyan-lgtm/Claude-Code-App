@@ -1,0 +1,17 @@
+# Secrets — never commit these
+.env
+youtube_automation/.env
+youtube_automation/service_account.json
+youtube_automation/client_secrets.json
+youtube_automation/youtube_token.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Temp video files
+youtube_automation/yta_*.mp4
+youtube_automation/yta_*.mov
