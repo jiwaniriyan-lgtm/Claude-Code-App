@@ -6,148 +6,211 @@
 
 ---
 
-## Cold Open (0:00–0:20)
+## Alternate titles
 
-> The IRS lets you legally skip taxes on hundreds of thousands of dollars of investment growth — but only if you fund the right accounts in the right order.
->
-> Most people get this order wrong. They dump money into a Roth IRA before claiming a 401(k) match, or they ignore the single most tax-advantaged account in the entire US tax code. So today, I'm ranking every major tax-advantaged account from worst to best, and telling you exactly where each dollar should go.
-
-**B-roll:** stack of cash, IRS forms, calendar flipping, account icons populating a leaderboard.
+1. Every Tax-Advantaged Account, Ranked Worst to Best (primary)
+2. The #1 Tax-Advantaged Account Almost Nobody Maxes Out
+3. Stop Funding Your Roth IRA Before You Watch This
 
 ---
 
-## The Ranking Framework (0:20–1:00)
+## Cold Open
 
-Three criteria decide where each account lands:
+[VISUAL: Stack of cash on a desk slowly being covered by an IRS Form 1040, dramatic top-down lighting]
 
-1. **Tax treatment** — pre-tax in, tax-free growth, tax-free out, or some combination.
-2. **Free money** — does anyone (employer, government) put money in alongside you?
-3. **Flexibility** — can you actually get the money when you need it, without penalty?
+The IRS lets you legally skip taxes on hundreds of thousands of dollars of investment growth — but only if you fund the right accounts in the right order.
+
+[PAUSE]
+
+Most people get this order wrong. They dump money into a Roth IRA before claiming a 401(k) match, or they ignore the single most tax-advantaged account in the entire US tax code.
+
+[VISUAL: Animated leaderboard with 8 blank slots, the #1 slot covered by a glowing question mark]
+
+So today, I'm ranking every major tax-advantaged account from worst to best, and telling you exactly where each dollar should go.
+
+---
+
+## The Ranking Framework
+
+[VISUAL: Three icons appearing in sequence — a tax-form shield, a stack of dollar bills with a bow, and an unlocked padlock]
+
+Three criteria decide where each account lands.
+
+One: tax treatment. Pre-tax in, tax-free growth, tax-free out, or some combination.
+
+Two: free money. Does anyone — your employer, the government — put money in alongside you?
+
+Three: flexibility. Can you actually get the money when you need it, without penalty?
+
+[PAUSE]
 
 An account that wins on all three goes to the top. An account that loses on flexibility — even with great tax treatment — drops down the list.
 
 ---
 
-## #8 — Taxable Brokerage *(honorable mention, not tax-advantaged)*  (1:00–1:30)
+## #8 — Taxable Brokerage (honorable mention)
+
+[VISUAL: Number 8 slot on the leaderboard, brokerage account icon with a small asterisk reading "not actually tax-advantaged"]
 
 Not technically on the list, but worth naming so you know what you're beating.
 
-- No tax break going in.
-- Dividends and realized gains taxed every year.
-- **Upside:** infinite contribution room, total liquidity, long-term capital gains rates.
+No tax break going in. Dividends and realized gains taxed every year. The upside: infinite contribution room, total liquidity, and long-term capital gains rates.
 
-Use this *after* you've filled the accounts below — or for goals shorter than retirement.
+Use this after you've filled the accounts below — or for goals shorter than retirement.
 
 ---
 
-## #7 — Traditional IRA  (1:30–2:30)
+## #7 — Traditional IRA
 
-- 2026 limit: $7,000 ($8,000 if 50+).
-- Deduction phases out fast if you or your spouse have a workplace plan.
-- Same tax-deferred growth as a 401(k), but with **a fraction of the contribution room** and **no employer match**.
+[VISUAL: Number 7 slot, "$7,000" contribution cap displayed prominently, with a small "$8,000 if 50+" footnote]
 
-**Why it ranks low:** for most W-2 earners, it's strictly dominated by either the 401(k) (more room, match) or the Roth IRA (better tax profile at similar income levels). Useful mainly as a parking spot for a Backdoor Roth conversion.
+2026 limit: seven thousand dollars, eight thousand if you're 50 or older. The deduction phases out fast if you or your spouse have a workplace plan.
 
----
+Same tax-deferred growth as a 401(k), but with a fraction of the contribution room and no employer match.
 
-## #6 — 529 Plan  (2:30–3:30)
+[PAUSE]
 
-- After-tax in, tax-free growth, tax-free out **for qualified education expenses**.
-- Many states give a deduction or credit on contributions.
-- New rule: up to $35,000 lifetime can roll to a Roth IRA for the beneficiary (15-year-old account, subject to annual Roth limits).
-
-**Why it ranks here:** the tax treatment is excellent, but the money is locked to education. If your kid gets a scholarship or skips college, you pay tax + 10% penalty on earnings to get it out. Great if you're certain about the goal — risky as a primary retirement vehicle.
+Why it ranks low: for most W-2 earners, it's strictly dominated by either the 401(k) — more room, plus the match — or the Roth IRA, which has a better tax profile at similar income levels. Useful mainly as a parking spot for a Backdoor Roth conversion.
 
 ---
 
-## #5 — Traditional 401(k) — *above the match*  (3:30–4:30)
+## #6 — 529 Plan
 
-Once you've claimed the match (see #2), additional traditional 401(k) contributions still earn their keep:
+[VISUAL: Number 6 slot with a graduation cap icon, then a lock icon labeled "education only"]
 
-- 2026 employee limit: $23,500 ($31,000 if 50+).
-- Pre-tax, lowers your AGI today.
-- Creditor-protected under ERISA.
+After-tax in, tax-free growth, tax-free out — but only for qualified education expenses. Many states give a deduction or credit on contributions.
 
-**Why it's not higher:** you're betting your retirement tax rate is lower than today's. For high earners that's usually true. For early-career savers it often isn't — which is why the Roth version of the same account beats it.
+[VISUAL: Animated arrow showing $35,000 rolling from a 529 into a Roth IRA, with "15-year rule" label]
 
----
+There's a newer rule worth knowing: up to thirty-five thousand dollars lifetime can roll to a Roth IRA for the beneficiary, subject to a fifteen-year-old account requirement and the annual Roth limits.
 
-## #4 — Roth 401(k) / Roth IRA  (4:30–5:30)
-
-- After-tax in, **tax-free growth, tax-free withdrawals in retirement**.
-- Roth IRA contributions (not earnings) can be pulled at any time, penalty-free — surprisingly flexible.
-- Roth IRA 2026 limit: $7,000 / $8,000. Income phaseout — use the Backdoor if you're over.
-- Roth 401(k) shares the $23,500 employee cap with the traditional bucket.
-
-**Why it's top-half:** tax-free compounding for 30+ years is the most valuable thing in personal finance. The trade-off is no deduction today, which is why we put it behind the accounts that pay you to use them.
+The tax treatment is excellent, but the money is locked to education. If your kid gets a scholarship or skips college, you pay tax plus a ten percent penalty on earnings to get it out. Great if you're certain about the goal — risky as a primary retirement vehicle.
 
 ---
 
-## #3 — Mega Backdoor Roth  (5:30–6:30)
+## #5 — Traditional 401(k), above the match
 
-If your 401(k) plan supports **after-tax contributions** plus **in-plan Roth conversions** or **in-service distributions**, you can stuff up to the full §415(c) limit — $70,000 in 2026, minus your other contributions and the match — into a Roth bucket.
+[VISUAL: Number 5 slot, "$23,500" cap with "$31,000 if 50+" subtext, ERISA shield icon]
 
-- Tens of thousands of extra Roth dollars per year.
-- Only works if your plan document allows it. Call HR and ask for the SPD.
+Once you've claimed the match — and we'll get to that — additional traditional 401(k) contributions still earn their keep.
 
-**Why it's #3:** the dollar amounts are enormous and the tax treatment is the best available. It loses to the next two only because not everyone can access it, and because the accounts above it pay you on top of the tax break.
+2026 employee limit: twenty-three thousand five hundred dollars, thirty-one thousand if you're 50 or older. Pre-tax, lowers your AGI today, and creditor-protected under ERISA.
+
+[PAUSE]
+
+Why it's not higher: you're betting your retirement tax rate is lower than today's. For high earners that's usually true. For early-career savers it often isn't — which is why the Roth version of the same account beats it.
 
 ---
 
-## #2 — 401(k) Match  (6:30–7:15)
+## #4 — Roth 401(k) and Roth IRA
+
+[VISUAL: Number 4 slot split-screen: Roth IRA icon on the left ($7,000 cap), Roth 401(k) on the right (sharing the $23,500 cap)]
+
+After-tax in, tax-free growth, tax-free withdrawals in retirement. Roth IRA contributions — not earnings — can be pulled at any time, penalty-free. Surprisingly flexible.
+
+Roth IRA 2026 limit: seven thousand, or eight thousand if you're over 50. There's an income phaseout — use the Backdoor if you're over it.
+
+The Roth 401(k) shares the twenty-three-thousand-five-hundred employee cap with the traditional bucket.
+
+[PAUSE]
+
+Why it's top-half: tax-free compounding for thirty-plus years is the most valuable thing in personal finance. The trade-off is no deduction today, which is why we put it behind the accounts that pay you to use them.
+
+---
+
+## #3 — Mega Backdoor Roth
+
+[VISUAL: Number 3 slot, "$70,000" §415(c) limit displayed in large type, with smaller breakdown showing employee + match + after-tax]
+
+If your 401(k) plan supports after-tax contributions plus in-plan Roth conversions or in-service distributions, you can stuff up to the full section 415(c) limit — seventy thousand dollars in 2026, minus your other contributions and the match — into a Roth bucket.
+
+[VISUAL: Phone with HR on speaker, a Summary Plan Description PDF visible on screen]
+
+Tens of thousands of extra Roth dollars per year. But it only works if your plan document allows it. Call HR and ask for the SPD.
+
+The dollar amounts are enormous and the tax treatment is the best available. It loses to the next two only because not everyone can access it, and because the accounts above it pay you on top of the tax break.
+
+---
+
+## #2 — 401(k) Match
+
+[VISUAL: Number 2 slot, big "100%" return graphic with an arrow shooting straight up]
 
 The single highest-ROI move in this entire video.
 
-- A 100% match on the first 5% of salary is a **100% instant return** before the market does anything.
-- It's part of your compensation. Not contributing up to the match is a voluntary pay cut.
+A one-hundred-percent match on the first five percent of salary is a one-hundred-percent instant return — before the market does anything. It's part of your compensation. Not contributing up to the match is a voluntary pay cut.
 
-**Action:** whatever the match formula is, contribute exactly enough to capture all of it. Then move on to the rest of the list.
+[PAUSE]
 
-The only reason this isn't #1 is that the account at the top has *better tax treatment than any other account in the US tax code* — and it's the one almost nobody talks about.
+Action: whatever the match formula is, contribute exactly enough to capture all of it. Then move on to the rest of the list.
+
+The only reason this isn't number one is that the account at the top has better tax treatment than any other account in the US tax code — and it's the one almost nobody talks about.
 
 ---
 
-## #1 — HSA (Health Savings Account)  (7:15–8:15)
+## #1 — HSA
 
-The only **triple-tax-advantaged** account in America:
+[VISUAL: Number 1 slot revealed with a triangular badge labeled "Triple Tax Advantage" — three corners labeled IN, GROWTH, OUT]
 
-1. Pre-tax (or above-the-line deduction) going in.
-2. Tax-free growth.
-3. Tax-free withdrawals for qualified medical expenses — **at any age**.
+The only triple-tax-advantaged account in America.
 
-2026 limits: $4,400 self-only / $8,750 family, plus $1,000 catch-up at 55+.
+Pre-tax — or above-the-line deduction — going in. Tax-free growth. Tax-free withdrawals for qualified medical expenses, at any age.
 
-**The trick:** don't spend it. Pay current medical bills out of pocket, save the receipts, and invest the HSA balance for decades. Reimburse yourself tax-free whenever you want — there's no statute of limitations on the receipt.
+[VISUAL: 2026 limits displayed: "$4,400 self-only / $8,750 family / +$1,000 catch-up at 55+"]
+
+2026 limits: forty-four hundred dollars self-only, eighty-seven fifty for family, plus a thousand-dollar catch-up at 55 or older.
+
+[VISUAL: Shoebox of medical receipts on a shelf gathering dust, then a chart showing the HSA balance compounding for 30 years]
+
+The trick: don't spend it. Pay current medical bills out of pocket, save the receipts, and invest the HSA balance for decades. Reimburse yourself tax-free whenever you want — there's no statute of limitations on the receipt.
 
 After 65, non-medical withdrawals are taxed like a traditional IRA — so worst case, it's still as good as a 401(k). Best case, it's better than every account on this list.
 
-**Catch:** you must be enrolled in an HSA-eligible high-deductible health plan. Run the numbers on premiums vs. deductible before switching.
+[PAUSE]
+
+The catch: you must be enrolled in an HSA-eligible high-deductible health plan. Run the numbers on premiums versus deductible before switching.
 
 ---
 
-## The Order (8:15–9:00)
+## The Order
+
+[VISUAL: Numbered funding-order checklist appearing one line at a time]
 
 For most people with access to all of these, the funding order is:
 
-1. **401(k) up to the match** — never leave free money.
-2. **HSA, maxed** — if you're HDHP-eligible.
-3. **Roth IRA, maxed** — Backdoor if income requires.
-4. **Rest of 401(k), to the $23,500 cap** — Roth or traditional based on your bracket.
-5. **Mega Backdoor Roth** — if your plan allows.
-6. **529** — if education is a goal.
-7. **Taxable brokerage** — for everything else, and for pre-retirement liquidity.
+One: 401(k) up to the match — never leave free money.
+
+Two: HSA, maxed — if you're HDHP-eligible.
+
+Three: Roth IRA, maxed — Backdoor if income requires.
+
+Four: rest of 401(k), to the twenty-three-thousand-five-hundred cap — Roth or traditional based on your bracket.
+
+Five: Mega Backdoor Roth — if your plan allows.
+
+Six: 529 — if education is a goal.
+
+Seven: taxable brokerage — for everything else, and for pre-retirement liquidity.
 
 Skip any account that doesn't apply to you and slide the rest up.
 
 ---
 
-## Outro (9:00–9:30)
+## Outro
 
-> The tax code rewards people who pay attention to it. An hour spent setting up these accounts in the right order is worth more than a year of stock picking.
->
-> If this was useful, the next video walks through the **Backdoor Roth** step-by-step, including the form 8606 mistake that costs people thousands. Subscribe so you don't miss it.
+[VISUAL: Wide shot of host at desk, end-screen cards for next videos appearing on the right]
 
-**End screen:** Backdoor Roth video, HSA deep-dive, subscribe button.
+The tax code rewards people who pay attention to it. An hour spent setting up these accounts in the right order is worth more than a year of stock picking.
+
+If this was useful, the next video walks through the Backdoor Roth step-by-step, including the form 8606 mistake that costs people thousands. Subscribe so you don't miss it.
+
+---
+
+## Thumbnail concepts
+
+1. **Leaderboard reveal** — vertical leaderboard with slots #2 through #8 visible and labeled, slot #1 covered by a giant red question mark. Bold yellow text overlay: "RANKED WORST TO BEST". Dark navy background.
+2. **Triangle reveal** — close-up of a glowing green triangle with the corners labeled IN, GROWTH, OUT, sitting above small grayed-out icons of a 401(k), Roth IRA, and 529. Bold white text: "THE #1 ACCOUNT". Black background.
+3. **Money + shocked face** — split layout with host's surprised face on the left, a stack of cash labeled "$70,000/yr" on the right, and a small "MEGA BACKDOOR" tag at the bottom. Dark gradient background.
 
 ---
 
@@ -156,5 +219,4 @@ Skip any account that doesn't apply to you and slide the rest up.
 - **Lower-thirds:** show each account's 2026 contribution limit on screen as it's introduced.
 - **On-screen graphic at #1:** triple-tax-advantage triangle (in / growth / out).
 - **Pinned comment:** "Limits shown are 2026. Always verify with IRS.gov before contributing — phaseouts and catch-up rules change."
-- **Thumbnail concept:** leaderboard with #1 covered by a "?" — HSA logo revealed in video.
 - **Sources to cite in description:** IRS Pub 969 (HSA), IRS Pub 590-A/B (IRAs), IRS Notice on 2026 limits, plan-specific SPDs.
