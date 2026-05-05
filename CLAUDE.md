@@ -62,7 +62,7 @@ If `.venv` doesn't exist on a new machine: `python -m venv .venv && source .venv
 ## Env vars (see `.env.example`)
 
 - `ELEVENLABS_API_KEY` — from elevenlabs.io
-- `ELEVENLABS_VOICE_ID` — **TODO: paste 20-char voice ID from elevenlabs.io/app/voice-library**
+- `ELEVENLABS_VOICE_ID` — defaults to `uf0ZrRtyyJlbbGIn43uD` in `.env.example`; override if you swap voices
 - `GEMINI_API_KEY` — from aistudio.google.com/apikey (this is the "image API key" since we use Gemini 2.5 Flash Image)
 - `YOUTUBE_API_KEY` — from console.cloud.google.com (for upload automation later)
 
