@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CopperAI — Viral YouTube Idea Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d1a;--bg2:#13132a;--bg3:#1a1a35;
+  --card:#181830;--border:#2a2a4a;
+  --purple:#a855f7;--pink:#ec4899;--cyan:#06b6d4;
+  --green:#22c55e;--yellow:#eab308;
+  --text:#f1f5f9;--muted:#94a3b8;--radius:14px
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;background:rgba(13,13,26,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{font-size:1.5rem;font-weight:800;letter-spacing:-.5px}
+.logo span:first-child{color:#c084fc}.logo span:last-child{color:#fff}
+.nav-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-btn{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+.nav-btn:hover{color:var(--text);border-color:var(--purple)}
+.nav-btn.active{color:var(--text);border-color:var(--purple);background:rgba(168,85,247,.1)}
+
+.hero{text-align:center;padding:72px 20px 48px;max-width:780px;margin:0 auto}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);border-radius:999px;padding:6px 16px;font-size:.78rem;font-weight:600;color:#c084fc;letter-spacing:.5px;margin-bottom:28px}
+.badge::before{content:'★'}
+.hero h1{font-size:clamp(2.4rem,6vw,4rem);font-weight:900;line-height:1.1;letter-spacing:-1.5px;margin-bottom:18px}
+.hero h1 .gradient{background:linear-gradient(135deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:1.1rem;color:var(--muted);line-height:1.6;margin-bottom:32px}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.4);border-radius:12px;padding:14px 24px;font-size:.95rem;font-weight:600;color:#c084fc;cursor:pointer;transition:all .2s;text-decoration:none}
+.hero-cta:hover{background:rgba(168,85,247,.25);transform:translateY(-1px)}
+.hero-cta .play{width:30px;height:30px;background:var(--purple);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hero-cta .play::after{content:'▶';font-size:.65rem;color:#fff;margin-left:2px}
+
+.generator{max-width:780px;margin:0 auto 60px;padding:0 20px}
+.gen-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px}
+.section-label{font-size:.72rem;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:16px}
+.niches{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+.niche-chip{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:.85rem;font-weight:500;cursor:pointer;transition:all .18s;font-family:inherit}
+.niche-chip:hover{border-color:var(--purple);color:var(--text)}
+.niche-chip.selected{border-color:var(--purple);background:rgba(168,85,247,.18);color:#fff}
+.input-wrap{position:relative;margin-bottom:20px}
+.input-wrap input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 60px 14px 18px;font-size:1rem;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s}
+.input-wrap input:focus{border-color:var(--purple)}
+.input-wrap input::placeholder{color:var(--muted)}
+.char-count{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--muted)}
+.gen-btn{width:100%;padding:16px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:1.05rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;letter-spacing:.2px}
+.gen-btn:hover:not(:disabled){background:linear-gradient(135deg,#6d28d9,#9333ea);transform:translateY(-1px);box-shadow:0 8px 30px rgba(168,85,247,.35)}
+.gen-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.gen-btn .spinner,.load-more-btn .spinner,.ai-gen-btn .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+.gen-btn.loading .spinner,.load-more-btn.loading .spinner,.ai-gen-btn.loading .spinner{display:block}
+.gen-btn.loading .btn-text,.ai-gen-btn.loading .btn-text{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.api-setup{max-width:780px;margin:0 auto 24px;padding:0 20px}
+.api-card{background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:14px;padding:20px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.api-card p{font-size:.9rem;color:var(--muted);flex:1;min-width:200px}
+.api-card p strong{color:var(--text)}
+.api-input-row{display:flex;gap:10px;flex:2;min-width:260px}
+.api-input-row input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.88rem;color:var(--text);font-family:inherit;outline:none}
+.api-input-row input:focus{border-color:var(--purple)}
+.api-save-btn{padding:10px 18px;background:var(--purple);border:none;border-radius:8px;color:#fff;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .2s}
+.api-save-btn:hover{background:#9333ea}
+
+.results-section{max-width:1200px;margin:0 auto;padding:0 20px 80px}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:10px}
+.results-header h2{font-size:1.3rem;font-weight:700}
+.results-header span{font-size:.85rem;color:var(--muted)}
+.ideas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;margin-bottom:32px}
+.idea-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;flex-direction:column;gap:16px;transition:border-color .2s,transform .2s}
+.idea-card:hover{border-color:rgba(168,85,247,.4);transform:translateY(-2px)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.idea-meta{display:flex;flex-direction:column;gap:6px}
+.idea-num{font-size:.72rem;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+.tag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:.72rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.tag.viral-hit{background:rgba(168,85,247,.2);color:#c084fc;border:1px solid rgba(168,85,247,.3)}
+.tag.high-pot{background:rgba(234,179,8,.15);color:#fbbf24;border:1px solid rgba(234,179,8,.3)}
+.tag.trending{background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.3)}
+.viral-score{width:68px;height:68px;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center}
+.viral-score svg{position:absolute;top:0;left:0;width:100%;height:100%;transform:rotate(-90deg)}
+.viral-score .track{fill:none;stroke:var(--border);stroke-width:4}
+.viral-score .fill{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s ease}
+.viral-score .label{text-align:center;z-index:1}
+.viral-score .pct{font-size:1rem;font-weight:800;display:block;line-height:1}
+.viral-score .word{font-size:.55rem;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+.idea-title{font-size:1.2rem;font-weight:800;line-height:1.3;letter-spacing:-.3px}
+.idea-desc{font-size:.88rem;color:var(--muted);line-height:1.6}
+.factors{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.factor-box{border-radius:10px;padding:12px 14px}
+.factor-box.outlier{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2)}
+.factor-box.payoff{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2)}
+.factor-label{font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.factor-box.outlier .factor-label{color:#f87171}
+.factor-box.payoff .factor-label{color:#c084fc}
+.factor-value{font-size:.85rem;font-weight:600;color:var(--text)}
+
+.card-actions{display:flex;flex-direction:column;gap:8px;margin-top:auto}
+.action-row{display:flex;gap:8px}
+.action-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s}
+.action-btn:hover:not(:disabled){border-color:var(--purple);color:var(--text)}
+.action-btn.save-btn{border-color:rgba(168,85,247,.4);color:var(--purple);background:rgba(168,85,247,.08)}
+.action-btn.save-btn:hover{background:rgba(168,85,247,.18)}
+.action-btn.saved-btn{border-color:var(--green);color:var(--green);background:rgba(34,197,94,.08);cursor:default}
+.action-btn.delete-btn{border-color:rgba(239,68,68,.3);color:#f87171;background:rgba(239,68,68,.05)}
+.action-btn.delete-btn:hover{background:rgba(239,68,68,.15);border-color:#f87171;color:#fca5a5}
+.action-btn.deep-btn{border:none;color:#fff;font-weight:700;background:linear-gradient(135deg,#7c3aed,#ec4899);padding:12px}
+.action-btn.deep-btn:hover{background:linear-gradient(135deg,#6d28d9,#db2777);transform:translateY(-1px);box-shadow:0 6px 20px rgba(168,85,247,.3)}
+
+.load-more-wrap{text-align:center}
+.load-more-btn{padding:14px 32px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:10px;transition:all .2s}
+.load-more-btn:hover{border-color:var(--purple)}
+.load-more-btn .counter{color:var(--muted);font-size:.82rem}
+
+#historyPage,#workbooksPage{display:none;max-width:1200px;margin:0 auto;padding:40px 20px 80px}
+#historyPage h2,#workbooksPage h2{font-size:1.8rem;font-weight:800;margin-bottom:8px}
+#historyPage .sub,#workbooksPage .sub{color:var(--muted);font-size:.95rem;margin-bottom:32px}
+.history-empty{text-align:center;padding:80px 20px;color:var(--muted)}
+.history-empty .icon{font-size:3rem;margin-bottom:12px}
+.clear-history-btn{padding:10px 20px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#f87171;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.clear-history-btn:hover{background:rgba(239,68,68,.15)}
+.history-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.history-niche-tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#22d3ee;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);padding:2px 8px;border-radius:5px;margin-bottom:4px}
+
+.workbook-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;gap:14px;transition:all .2s;cursor:pointer}
+.workbook-card:hover{border-color:rgba(168,85,247,.5);transform:translateY(-2px)}
+.wb-name{font-size:1.1rem;font-weight:700;line-height:1.3}
+.wb-meta{font-size:.78rem;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wb-progress-bar{height:6px;background:var(--bg3);border-radius:999px;overflow:hidden}
+.wb-progress-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#ec4899);border-radius:999px;transition:width .3s}
+.wb-actions{display:flex;gap:8px;margin-top:auto}
+
+#deepDivePage{display:none;max-width:1100px;margin:0 auto;padding:28px 20px 80px}
+.dd-back{background:none;border:none;color:var(--muted);font-family:inherit;font-size:.9rem;cursor:pointer;padding:6px 0;display:inline-flex;align-items:center;gap:6px;margin-bottom:18px}
+.dd-back:hover{color:var(--text)}
+.dd-header{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:20px}
+.dd-name-input{width:100%;background:transparent;border:none;outline:none;color:var(--text);font-family:inherit;font-size:1.6rem;font-weight:800;letter-spacing:-.5px;padding:4px 8px;margin-left:-8px;border-radius:8px;transition:background .2s}
+.dd-name-input:hover,.dd-name-input:focus{background:var(--bg3)}
+.dd-breadcrumb{font-size:.85rem;color:var(--muted);margin-top:8px}
+.dd-breadcrumb .niche-pill{display:inline-block;color:#22d3ee;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);padding:2px 10px;border-radius:5px;font-weight:600;font-size:.78rem}
+.dd-breadcrumb .arrow{margin:0 8px}
+.dd-breadcrumb .idea{color:var(--text);font-weight:600}
+
+.stepper-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px;overflow-x:auto}
+.stepper{display:flex;gap:4px;min-width:max-content;padding:2px}
+.step{display:flex;flex-direction:column;align-items:center;min-width:88px;padding:8px 6px;border-radius:8px;cursor:pointer;transition:all .2s;background:transparent;border:1px solid transparent}
+.step:hover{background:var(--bg3)}
+.step.current{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4)}
+.step-circle{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:4px;transition:all .2s}
+.step.done .step-circle{background:var(--green);border-color:var(--green);color:#0d0d1a}
+.step.current .step-circle{background:var(--purple);border-color:var(--purple);color:#fff}
+.step.skipped .step-circle{background:var(--bg3);border-color:var(--yellow);color:var(--yellow)}
+.step-label{font-size:.65rem;font-weight:600;color:var(--muted);text-align:center;line-height:1.2;max-width:88px}
+.step.current .step-label{color:var(--text)}
+.step.done .step-label{color:var(--green)}
+
+.state-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:20px}
+.state-num-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.state-num{font-size:.72rem;font-weight:800;letter-spacing:1.5px;color:var(--purple);text-transform:uppercase}
+.state-optional-tag{font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--yellow);background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.3);padding:2px 8px;border-radius:5px;text-transform:uppercase}
+.state-title{font-size:1.5rem;font-weight:800;margin-bottom:8px;letter-spacing:-.3px}
+.state-helper{font-size:.92rem;color:var(--muted);line-height:1.6;margin-bottom:22px}
+.field-label{font-size:.72rem;font-weight:700;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.field-hint{font-size:.7rem;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500}
+textarea.dd-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:.92rem;color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;resize:vertical;outline:none;transition:border-color .2s}
+textarea.dd-textarea:focus{border-color:var(--purple)}
+textarea.dd-input{min-height:110px;margin-bottom:16px}
+textarea.dd-output{min-height:240px;margin-bottom:4px;background:rgba(168,85,247,.04);border-color:rgba(168,85,247,.3)}
+.ai-gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:10px;color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:22px;transition:all .2s}
+.ai-gen-btn:hover:not(:disabled){background:linear-gradient(135deg,#6d28d9,#9333ea);transform:translateY(-1px);box-shadow:0 6px 22px rgba(168,85,247,.3)}
+.ai-gen-btn:disabled{opacity:.6;cursor:not-allowed}
+.copy-row{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px}
+.mini-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.mini-btn:hover{color:var(--text);border-color:var(--purple)}
+
+/* TRANSCRIPTS */
+.transcript-list{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.transcript-item{position:relative}
+.transcript-head{font-size:.7rem;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.transcript-remove{background:transparent;border:none;color:#f87171;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;text-transform:none;letter-spacing:0}
+.transcript-remove:hover{text-decoration:underline}
+.add-transcript-btn{background:var(--bg3);border:1px dashed var(--border);color:var(--purple);padding:12px;border-radius:10px;width:100%;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;margin-bottom:18px}
+.add-transcript-btn:hover{border-color:var(--purple);background:rgba(168,85,247,.08)}
+
+/* IMAGE UPLOAD */
+.image-section{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.image-section-title{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.image-section-hint{font-size:.78rem;color:var(--muted);margin-bottom:12px}
+.image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:12px}
+.image-grid:empty{display:none}
+.image-preview{position:relative;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--bg2);border:1px solid var(--border)}
+.image-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.image-remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.75);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:.85rem;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.image-remove:hover{background:#ef4444}
+.upload-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:.85rem;font-weight:600;font-family:inherit;transition:all .2s}
+.upload-btn:hover{border-color:var(--purple)}
+.upload-btn input{display:none}
+
+/* DURATION SELECTOR */
+.duration-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.duration-chip{padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.duration-chip:hover{color:var(--text);border-color:var(--purple)}
+.duration-chip.selected{color:#fff;border-color:var(--purple);background:rgba(168,85,247,.2)}
+
+/* VIDEO TOGGLE */
+.video-toggle{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:18px;cursor:pointer;transition:border-color .2s}
+.video-toggle:hover{border-color:var(--purple)}
+.video-toggle input{width:18px;height:18px;accent-color:var(--purple);cursor:pointer;flex-shrink:0}
+.video-toggle-label{font-size:.92rem;font-weight:600}
+.video-toggle-hint{font-size:.78rem;color:var(--muted);margin-left:auto;text-align:right}
+
+/* OUTPUT BLOCKS */
+.output-block{margin-bottom:18px}
+.output-block-title{font-size:.72rem;font-weight:700;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.output-block-title .pill{font-size:.62rem;background:rgba(168,85,247,.18);color:#c084fc;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+
+.dd-nav{display:flex;gap:10px;flex-wrap:wrap}
+.dd-nav-btn{flex:1;min-width:120px;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s}
+.dd-nav-btn:hover:not(:disabled){border-color:var(--purple)}
+.dd-nav-btn:disabled{opacity:.5;cursor:not-allowed}
+.dd-nav-btn.skip{color:var(--yellow);border-color:rgba(234,179,8,.3)}
+.dd-nav-btn.skip:hover:not(:disabled){background:rgba(234,179,8,.08)}
+.dd-nav-btn.next{border:none;color:#fff;background:linear-gradient(135deg,#7c3aed,#ec4899)}
+.dd-nav-btn.next:hover:not(:disabled){background:linear-gradient(135deg,#6d28d9,#db2777);transform:translateY(-1px);box-shadow:0 6px 22px rgba(168,85,247,.3)}
+.dd-nav-btn.export{border-color:rgba(34,197,94,.4);color:var(--green);background:rgba(34,197,94,.08)}
+.dd-nav-btn.export:hover{background:rgba(34,197,94,.15)}
+
+.platform-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.platform-tab{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit}
+.platform-tab:hover{color:var(--text);border-color:var(--purple)}
+.platform-tab.active{color:#fff;border-color:var(--purple);background:rgba(168,85,247,.18)}
+
+/* SETUP DROPDOWN */
+.setup-dropdown{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 48px 14px 18px;font-size:1rem;font-weight:500;color:var(--text);font-family:inherit;cursor:pointer;outline:none;margin-bottom:20px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a855f7'><path d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 14px center;background-size:22px;transition:border-color .2s}
+.setup-dropdown:focus,.setup-dropdown:hover{border-color:var(--purple)}
+.setup-dropdown option{background:var(--bg3);color:var(--text);padding:10px}
+.setup-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:1rem;color:var(--text);font-family:inherit;outline:none;margin-bottom:16px;transition:border-color .2s}
+.setup-input:focus{border-color:var(--purple)}
+.setup-input::placeholder{color:var(--muted)}
+.setup-section{margin-bottom:24px}
+.setup-divider{height:1px;background:var(--border);margin:24px 0 20px}
+
+.toast{position:fixed;bottom:28px;right:28px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;font-size:.9rem;font-weight:500;color:var(--text);box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:1000;transform:translateY(20px);opacity:0;transition:all .3s;display:flex;align-items:center;gap:10px;max-width:360px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:#f87171}
+
+footer{text-align:center;padding:24px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+footer a{color:var(--purple);text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+.skeleton{background:linear-gradient(90deg,var(--bg2) 25%,var(--bg3) 50%,var(--bg2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+@keyframes shimmer{to{background-position:-200% 0}}
+.skeleton-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;flex-direction:column;gap:16px;min-height:320px}
+.skel-line{height:14px}.skel-line.short{width:40%}.skel-line.medium{width:70%}.skel-line.full{width:100%}
+.skel-block{height:70px}
+
+.page{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:640px){
+  nav{padding:14px 20px}
+  .hero{padding:48px 16px 32px}
+  .gen-card{padding:20px}
+  .ideas-grid{grid-template-columns:1fr}
+  .factors{grid-template-columns:1fr}
+  .state-panel,.dd-header{padding:20px}
+  .state-title{font-size:1.25rem}
+  .step{min-width:64px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><span>Copper</span><span>AI</span></div>
+  <div class="nav-links">
+    <button class="nav-btn active" id="navGenerate" onclick="showPage('generate')">Generate</button>
+    <button class="nav-btn" id="navHistory" onclick="showPage('history')">History <span id="historyBadge"></span></button>
+    <button class="nav-btn" id="navWorkbooks" onclick="showPage('workbooks')">Workbooks <span id="workbooksBadge"></span></button>
+  </div>
+</nav>
+
+<div id="generatePage" class="page">
+  <div class="hero">
+    <div class="badge">AI-Powered · Free Forever</div>
+    <h1><span class="gradient">Niche Intelligence</span><br>Viral Ideas That Win</h1>
+    <p>AI analyzes top channels, extracts viral patterns, and generates ideas your audience can't resist clicking.</p>
+    <a class="hero-cta" href="https://www.youtube.com" target="_blank" rel="noopener">
+      <span class="play"></span>
+      Watch how to grow a faceless YouTube channel to $200k+ ↗
+    </a>
+  </div>
+
+  <div class="api-setup">
+    <div class="api-card">
+      <p><strong>OpenAI API Key Required</strong><br>Your key is stored locally in your browser. Never shared.<br><span id="apiKeyStatus" style="font-size:.78rem;display:block;margin-top:6px"></span></p>
+      <div class="api-input-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off"/>
+        <button class="api-save-btn" onclick="saveApiKey()">Save Key</button>
+        <button class="api-save-btn" style="background:var(--bg3);border:1px solid var(--border);color:var(--text)" onclick="testApiKey()" id="testKeyBtn">🧪 Test</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="generator">
+    <div class="gen-card">
+      <div class="section-label">Pick how you want to start</div>
+      <select class="setup-dropdown" id="setupMode" onchange="onModeChange()">
+        <option value="">— Select an option —</option>
+        <option value="clone">🎯 Clone a YouTube Channel</option>
+        <option value="own">✨ Have My Own Ideas</option>
+      </select>
+
+      <div id="setupFields" style="display:none"></div>
+
+      <button class="gen-btn" id="genBtn" onclick="generateIdeas()" style="display:none">
+        <div class="spinner"></div>
+        <span class="btn-text">⚡ Generate 10 Viral Ideas</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="results-section" id="resultsSection" style="display:none;">
+    <div class="results-header">
+      <div>
+        <h2 id="resultsTitle">Ideas</h2>
+        <span id="resultsSubtitle">Click "🚀 Deep Dive" on any idea to start a full video project</span>
+      </div>
+      <span id="ideasCounter" style="color:var(--muted);font-size:.85rem;"></span>
+    </div>
+    <div class="ideas-grid" id="ideasGrid"></div>
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">
+        <span>⊕</span> Load 6 More
+        <div class="spinner"></div>
+        <span class="counter" id="loadMoreCounter"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="historyPage">
+  <div class="history-header-row">
+    <div>
+      <h2>📚 Saved Ideas</h2>
+      <p class="sub">Your saved viral ideas across all sessions.</p>
+    </div>
+    <button class="clear-history-btn" onclick="clearHistory()">🗑 Clear All</button>
+  </div>
+  <div id="historyGrid" class="ideas-grid"></div>
+  <div class="history-empty" id="historyEmpty" style="display:none;">
+    <div class="icon">📭</div>
+    <p>No saved ideas yet.<br>Generate some ideas and save your favourites!</p>
+  </div>
+</div>
+
+<div id="workbooksPage">
+  <div class="history-header-row">
+    <div>
+      <h2>🧪 Deep Dive Workbooks</h2>
+      <p class="sub">Your in-progress and completed video projects. Click any to resume.</p>
+    </div>
+    <button class="clear-history-btn" onclick="clearWorkbooks()">🗑 Clear All</button>
+  </div>
+  <div id="workbooksGrid" class="ideas-grid"></div>
+  <div class="history-empty" id="workbooksEmpty" style="display:none;">
+    <div class="icon">🧪</div>
+    <p>No workbooks yet.<br>Generate ideas, then click "🚀 Deep Dive" on one to start a project!</p>
+  </div>
+</div>
+
+<div id="deepDivePage">
+  <button class="dd-back" onclick="closeDeepDive()">← Back to Workbooks</button>
+  <div class="dd-header">
+    <input class="dd-name-input" id="ddNameInput" placeholder="Untitled Workbook" oninput="onNameChange()" />
+    <div class="dd-breadcrumb">
+      <span class="niche-pill" id="ddNicheTag"></span>
+      <span class="arrow">→</span>
+      <span class="idea" id="ddIdeaTitle"></span>
+    </div>
+  </div>
+  <div class="stepper-wrap"><div class="stepper" id="stepper"></div></div>
+  <div id="statePanelHost"></div>
+  <div class="dd-nav">
+    <button class="dd-nav-btn" id="ddPrev" onclick="navState(-1)">← Previous</button>
+    <button class="dd-nav-btn skip" id="ddSkip" onclick="skipState()">⊘ Skip</button>
+    <button class="dd-nav-btn export" onclick="exportWorkbook()">⬇ Export</button>
+    <button class="dd-nav-btn next" id="ddNext" onclick="navState(1)">Next →</button>
+  </div>
+</div>
+
+<footer>
+  Need help? <a href="mailto:hello@copperai.app">hello@copperai.app</a> &nbsp;·&nbsp; © 2026 CopperAI
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const NICHES = [
+  'Finance','Weight Loss','Python','AI Tools','Productivity',
+  'Crypto','Fitness','YouTube','Side Hustle','Self Help',
+  'Mental Health','Dating','Travel','Meal Prep','Real Estate',
+  'Marketing','Study Tips','Mindfulness','Car Reviews','Gaming'
+];
+const BATCH_SIZE = 10, MAX_IDEAS = 10;
+const PLATFORMS = ['YouTube','Instagram','TikTok','Facebook'];
+const DURATIONS = [
+  { v:'5',  label:'5 min'   },
+  { v:'10', label:'10 min'  },
+  { v:'15', label:'15 min'  },
+  { v:'25', label:'25 min'  },
+  { v:'30', label:'30 min'  },
+  { v:'45', label:'45 min'  },
+  { v:'60', label:'1 hour'  },
+  { v:'120',label:'2 hours' }
+];
+const DURATION_WORDS = { '5':750,'10':1500,'15':2250,'25':3750,'30':4500,'45':6750,'60':9000,'120':18000 };
+
+// 9-state Deep Dive flow
+const STATES = [
+  {
+    n:1, title:'Channel Link', short:'Channel', kind:'simple', optional:false,
+    helper:'Paste a YouTube channel URL or @handle of a creator you want to model after. AI generates a 10-point research framework so you know exactly what to copy.',
+    inputPlaceholder:'https://www.youtube.com/@creatorhandle  or  @creatorhandle',
+    buildPrompt: (ctx) => 'User wants to model a YouTube channel for the video idea: "' + ctx.ideaTitle + '" (niche: ' + ctx.niche + ').\nChannel reference: ' + (ctx.input || '(none — give a generic top-creator framework for this niche)') + '\n\nGenerate a 10-point analysis framework. For each point, give a specific question the user should answer by watching the channel. Cover: title formulas, hook patterns (first 8 sec), pacing & cuts/min, editing style, B-roll usage, voice/tone, thumbnail style, end-screen retention hooks, audience signals, upload cadence, plus 5 specific things to copy.\nNumbered list. ~150 words. No preamble.'
+  },
+  {
+    n:2, title:'Transcripts & Visual References', short:'References', kind:'transcripts', optional:true,
+    helper:'Paste 3+ transcripts from the channel\'s top videos. Upload reference images for the video style you want, plus 3-4 thumbnail references. AI uses ALL of this to match your style.',
+    buildPrompt: (ctx) => {
+      const ts = (ctx.transcripts || []).filter(t => t.trim());
+      const tBlock = ts.length ? ts.map((t,i) => 'TRANSCRIPT ' + (i+1) + ':\n"""\n' + t + '\n"""').join('\n\n') : '(no transcripts provided — produce a generic high-CTR pattern guide for this niche)';
+      const styleNote = ctx.styleImagesCount > 0 ? '\n\n[' + ctx.styleImagesCount + ' video-style reference image(s) attached — analyze their colors, framing, mood, lighting]' : '';
+      const thumbNote = ctx.thumbnailImagesCount > 0 ? '\n[' + ctx.thumbnailImagesCount + ' thumbnail reference image(s) attached — analyze their composition, text style, emotional hooks, color contrast]' : '';
+      return 'Analyze the following YouTube material for the niche "' + ctx.niche + '".\n\n' + tBlock + styleNote + thumbNote + '\n\nExtract:\n1) HOOK FORMULAS (first 30 sec) — 3 examples\n2) STORY STRUCTURE — beats and pacing\n3) RECURRING PHRASES & CTAs\n4) WORD CHOICE — vocabulary level, sentence length\n5) PATTERN INTERRUPTS — cliffhangers, reframes\n6) RETENTION TACTICS — open loops, foreshadows\n7) VISUAL STYLE PATTERNS (from style images): colors, framing, mood, lighting\n8) THUMBNAIL PATTERNS (from thumbnail images): composition, text style, emotion, color contrast\n\nLabeled sections. Be specific. Quote examples where possible.';
+    },
+    useVision: true
+  },
+  {
+    n:3, title:'Analysis + Style DNA', short:'Style DNA', kind:'simple', optional:true,
+    helper:'AI synthesizes everything from above into a reusable Style DNA — a compact template you can apply to every video going forward.',
+    inputPlaceholder:'Optional: your own style notes or constraints...',
+    buildPrompt: (ctx) => 'Synthesize a compact, reusable STYLE DNA document for the niche "' + ctx.niche + '".\n\nChannel framework:\n' + truncate(ctx.prev[1], 800) + '\n\nTranscript + visual analysis:\n' + truncate(ctx.prev[2], 1000) + '\n\nUser notes: ' + (ctx.input || '(none)') + '\n\nOutput exactly these sections (with bold headers):\n1. HOOK FORMULA TEMPLATE — fill-in-the-blank format\n2. TONE & VOICE — 5 descriptive words + sample sentence\n3. PACING PATTERN — beats/min, cut frequency\n4. TOP 5 RHETORICAL DEVICES used\n5. VISUAL STYLE SIGNATURE — colors, framing, B-roll pattern\n6. THUMBNAIL DNA — composition, text rules, emotional hook\n7. CTA FORMAT — how they end videos\n\nUnder 400 words. This is a reference card.'
+  },
+  {
+    n:4, title:'Script', short:'Script', kind:'script', optional:true, maxTokens:6000,
+    helper:'AI writes a complete script applying your Style DNA. Pick the target length below — the script will be sized to match.',
+    inputPlaceholder:'Optional: must-include points, banned phrases, target audience, story angles...',
+    buildPrompt: (ctx) => {
+      const dur = ctx.duration || '10';
+      const wt  = DURATION_WORDS[dur] || 1500;
+      const durLabel = (DURATIONS.find(d => d.v === dur) || {}).label || (dur + ' min');
+      return 'Write a complete YouTube video script.\n\nVIDEO IDEA: "' + ctx.ideaTitle + '"\nDESCRIPTION: ' + ctx.ideaDescription + '\nNICHE: ' + ctx.niche + '\nTARGET DURATION: ' + durLabel + ' (~' + wt + ' words)\n\nAPPLY THIS STYLE DNA:\n' + (truncate(ctx.prev[3], 1500) || 'Use a high-energy, high-retention YouTube style with strong hook, clear value, and emotional payoff.') + '\n\nUSER REQUIREMENTS: ' + (ctx.input || 'None.') + '\n\nStructure:\n[HOOK 0:00-0:15] — pattern interrupt opening\n[SETUP 0:15-1:00] — promise + stakes\n[SEGMENT 1, 2, 3...] — main content with retention bumps every ~90 sec\n[CLIMAX] — biggest payoff\n[CTA] — subscribe + next-video tease\n\nInclude [BRACKETED VISUAL CUES] every 30-60 sec. Write actual dialogue, not outline. Hit the ~' + wt + '-word target.';
+    }
+  },
+  {
+    n:5, title:'Image + Video Prompts', short:'Prompts', kind:'imagevideo', optional:true, maxTokens:3500,
+    helper:'AI generates 8 image prompts (Midjourney v6 / DALL-E 3 ready) using your script and uploaded style references. Toggle on video prompts if you also want B-roll clips for Runway / Sora / Kling.',
+    inputPlaceholder:'Optional: aspect ratio, characters, banned elements...',
+    buildPrompt: (ctx) => {
+      const refImg = ctx.styleImagesCount > 0 ? '\n[' + ctx.styleImagesCount + ' style reference image(s) attached — match their colors, framing, mood]' : '';
+      const wantVideo = ctx.generateVideo ? '\n\nALSO generate 6 SHORT VIDEO CLIP PROMPTS at the bottom (under header "=== VIDEO CLIP PROMPTS ===") for Runway Gen-3 / Sora / Kling. For each: CLIP [n], PROMPT (subject + action + camera movement + lighting + mood, ~30 words), DURATION 5-10s. Number 1-6.' : '';
+      return 'Generate 8 IMAGE PROMPTS for key scenes in this video, ready for Midjourney v6 or DALL-E 3.\n\nScript:\n' + truncate(ctx.prev[4], 1500) + refImg + '\n\nUser constraints: ' + (ctx.input || '(default 16:9, photorealistic unless reference says otherwise)') + '\n\nFor EACH of the 8 image prompts:\nSCENE [n]: [short scene name]\nPROMPT: [detailed prompt with subject, action, camera angle, lighting, lens, mood, style descriptors] --ar 16:9 --style raw\n\nNumber 1-8.' + wantVideo;
+    },
+    useVision: true
+  },
+  {
+    n:6, title:'Voice Prompts', short:'Voice', kind:'simple', optional:true,
+    helper:'AI generates ElevenLabs-ready voice direction — voice characteristics, stability/similarity sliders, per-section emphasis notes for the script.',
+    inputPlaceholder:'Optional: gender preference, accent, voice you\'re using already...',
+    buildPrompt: (ctx) => 'Generate ElevenLabs-ready VOICE DIRECTION for this video.\n\nScript:\n' + truncate(ctx.prev[4], 1500) + '\n\nStyle DNA tone:\n' + truncate(ctx.prev[3], 500) + '\n\nUser preferences: ' + (ctx.input || '(none)') + '\n\nOutput:\n1. VOICE PROFILE — gender, age range, accent, timbre (3 sentences)\n2. ELEVENLABS SETTINGS — stability (0-1), similarity (0-1), style exaggeration (0-1) with rationale\n3. SUGGESTED VOICES — 3 ElevenLabs preset names to try (e.g. Adam, Rachel, Bella)\n4. PACING — words per minute target\n5. PER-SECTION EMPHASIS — for hook, setup, segments, CTA — describe energy/pace shifts\n6. SSML / PAUSE NOTES — where to insert <break time="0.5s"/> tags'
+  },
+  {
+    n:7, title:'Thumbnails (vidIQ-Style)', short:'Thumbnails', kind:'simple', optional:true,
+    helper:'AI generates 4 thumbnail concepts using vidIQ-inspired CTR principles, matching the style of your uploaded thumbnail references.',
+    inputPlaceholder:'Optional: faces vs no-faces, must-include text, banned colors, paste vidIQ score data...',
+    buildPrompt: (ctx) => {
+      const refImg = ctx.thumbnailImagesCount > 0 ? '\n[' + ctx.thumbnailImagesCount + ' thumbnail reference image(s) attached — match their composition, text placement, color contrast, emotional hook]' : '';
+      return 'Apply vidIQ-style high-CTR thumbnail principles to "' + ctx.ideaTitle + '".\n\nNiche: ' + ctx.niche + '\nThumbnail DNA from references: ' + truncate(ctx.prev[2], 600) + refImg + '\nUser input: ' + (ctx.input || '(none — apply best-practice defaults)') + '\n\nFirst output a THUMBNAIL DNA paragraph: primary emotional hook (curiosity/shock/desire/fear/aspiration), color contrast (target 80+, dominant + accent hex), text rules (3-5 words), pattern-break tactics, predicted CTR lift.\n\nThen for EACH of 4 distinct concepts (close-up face / object focus / split-screen / text-dominant):\nCONCEPT [n]: [name]\nTEXT OVERLAY: [3-5 words, ALL CAPS or Title Case]\nVISUAL PROMPT: [detailed Midjourney v6 prompt, 1280x720 viral YouTube style, --ar 16:9]\nPREDICTED CTR SCORE: [1-10] with one-line reasoning';
+    }
+  },
+  {
+    n:8, title:'Title & Description (vidIQ-Style)', short:'Title+Desc', kind:'simple', optional:true,
+    helper:'AI generates SEO-optimized YouTube titles and a full description using vidIQ-inspired keyword research. Built to rank in search and click in feed.',
+    inputPlaceholder:'Optional: paste vidIQ keyword data, target keywords, brand voice, links to include...',
+    buildPrompt: (ctx) => 'Apply vidIQ-style SEO + keyword optimization for YouTube.\n\nVideo: "' + ctx.ideaTitle + '"\nNiche: ' + ctx.niche + '\nScript: ' + truncate(ctx.prev[4], 1200) + '\nUser keyword data / brand notes: ' + (ctx.input || '(none — apply best-practice defaults)') + '\n\nOutput exactly these sections:\n\n=== TITLE OPTIONS (5) ===\nFor EACH title (≤70 chars): the title, primary keyword, predicted CTR boost, why it works (1 line)\n\n=== KEYWORD STRATEGY ===\n10 keywords: 3 high-volume head terms, 4 mid-tail keywords, 3 long-tail keywords. For each note search intent (informational / commercial / navigational).\n\n=== DESCRIPTION ===\nFirst 125 chars (visible above the fold) — keyword-rich hook.\nThen full description (max 5000 chars) including: hook, summary, timestamps placeholder, links section, hashtags (3 max), end CTA.\n\n=== TAGS ===\n15 comma-separated YouTube tags (mix head/mid-tail/long-tail).\n\n=== PINNED COMMENT ===\n1 engagement-bait question that drives replies.'
+  },
+  {
+    n:9, title:'Multi-Platform Publish Bundle', short:'Platforms', kind:'platform', optional:true, maxTokens:5000, isPlatform:true,
+    helper:'AI adapts the FULL video into ready-to-publish bundles for YouTube, Instagram Reels, TikTok, and Facebook — including script, image prompt, voice notes, thumbnail text, hashtags, and description.',
+    inputPlaceholder:'Optional: your @handles, target hashtags, brand voice, links...',
+    buildPrompt: (ctx) => 'Adapt this video into FULL PUBLISH BUNDLES for 4 platforms. Use exact === PLATFORM === headers.\n\nVideo: "' + ctx.ideaTitle + '"\nNiche: ' + ctx.niche + '\nScript: ' + truncate(ctx.prev[4], 1500) + '\nTitle/desc strategy: ' + truncate(ctx.prev[8], 600) + '\nUser: ' + (ctx.input || '(none)') + '\n\nGenerate exactly these 4 sections:\n\n=== YOUTUBE ===\nTITLE: (≤70 chars, SEO-optimized)\nDESCRIPTION: (hook line + summary, ≤200 chars visible)\nTAGS: 15 comma-separated\nTHUMBNAIL TEXT: (3-5 words)\nIMAGE PROMPT: (1 hero image Midjourney prompt, 16:9)\nVOICE NOTE: (tone for the AI voice, e.g. "warm, deliberate")\nPINNED COMMENT: (engagement question)\n\n=== INSTAGRAM ===\nADAPTED SCRIPT: (~60 sec, vertical, hook in first 2 sec)\nCAPTION: (≤2200 chars, story-driven, emoji-friendly)\nHASHTAGS: 30 niche-mixed\nTHUMBNAIL TEXT: (cover frame text, 2-4 words)\nIMAGE PROMPT: (vertical 9:16 cover, Midjourney prompt)\nVOICE NOTE: (faster pace, energetic)\nON-SCREEN TEXT CUES: per beat\n\n=== TIKTOK ===\nADAPTED SCRIPT: (~45 sec, super-tight hook)\nCAPTION: (≤150 chars)\nHASHTAGS: 5 trending + niche\nTHUMBNAIL TEXT: (cover text)\nIMAGE PROMPT: (vertical 9:16)\nVOICE NOTE: (high-energy, conversational)\nTREND HOOK: (which trending sound/format style fits)\n\n=== FACEBOOK ===\nADAPTED SCRIPT: (3-5 min landscape, casual tone)\nPOST CAPTION: (1-2 sentences ending in a question)\nHASHTAGS: 5-8 niche-targeted\nTHUMBNAIL TEXT: (emotional hook, 3-5 words)\nIMAGE PROMPT: (1.91:1 landscape)\nVOICE NOTE: (warm, friendly, slower pace)\nTARGETING NOTES: audience demo + interests for boosting'
+  }
+];
+
+let state = {
+  niche:'', allIdeas:[], shown:0, loading:false,
+  history:   JSON.parse(localStorage.getItem('copperai_history') || '[]'),
+  workbooks: JSON.parse(localStorage.getItem('copperai_workbooks_v2') || '[]'),
+  apiKey: localStorage.getItem('copperai_apikey') || '',
+  currentWorkbookId:null, currentStateIdx:0, activePlatform:'YouTube',
+  setupData: {
+    mode:'', channelUrl:'', niche:'',
+    transcripts:['', '', ''],
+    styleImages:[], thumbnailImages:[],
+    duration:'10', notes:''
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (state.apiKey) {
+    document.getElementById('apiKeyInput').value = state.apiKey;
+    updateApiKeyStatus('saved');
+  }
+  // restore dropdown state if there was one
+  const savedMode = localStorage.getItem('copperai_setup_mode');
+  if (savedMode) {
+    state.setupData.mode = savedMode;
+    document.getElementById('setupMode').value = savedMode;
+    renderSetupFields();
+  }
+  updateHistoryBadge();
+  updateWorkbooksBadge();
+});
+
+function renderNiches() {
+  document.getElementById('nichesContainer').innerHTML = NICHES.map(n =>
+    `<button class="niche-chip ${state.niche===n?'selected':''}" onclick="selectNiche('${n}')">${n}</button>`
+  ).join('');
+}
+function selectNiche(n) { state.niche = n; document.getElementById('nicheInput').value = n; updateCharCount(); renderNiches(); }
+function updateCharCount() {
+  const v = document.getElementById('nicheInput').value;
+  state.niche = v;
+  document.getElementById('charCount').textContent = v.length + '/60';
+  document.querySelectorAll('.niche-chip').forEach(chip => chip.classList.toggle('selected', chip.textContent === state.niche));
+}
+function saveApiKey() {
+  // strip ALL whitespace (newlines/tabs/spaces from messy copy-paste)
+  const raw = document.getElementById('apiKeyInput').value || '';
+  const k = raw.replace(/\s+/g, '');
+  if (!k.startsWith('sk-')) { showToast('❌ Enter a valid OpenAI key (starts with sk-)', 'error'); return; }
+  if (k.length < 20) { showToast('❌ Key looks too short — re-paste it', 'error'); return; }
+  state.apiKey = k;
+  localStorage.setItem('copperai_apikey', k);
+  document.getElementById('apiKeyInput').value = k;  // overwrite with cleaned key
+  showToast('✅ API key saved! Click 🧪 Test to verify it works.', 'success');
+  updateApiKeyStatus('saved');
+}
+
+function updateApiKeyStatus(state_label, extra) {
+  const el = document.getElementById('apiKeyStatus');
+  if (!el || !state.apiKey) return;
+  const tail = state.apiKey.slice(-4);
+  const len = state.apiKey.length;
+  if (state_label === 'saved')   el.innerHTML = `<span style="color:var(--muted)">Saved key: …${tail} (${len} chars). Untested.</span>`;
+  if (state_label === 'testing') el.innerHTML = `<span style="color:var(--muted)">Testing …${tail}...</span>`;
+  if (state_label === 'ok')      el.innerHTML = `<span style="color:var(--green)">✓ Key …${tail} works!</span>`;
+  if (state_label === 'fail')    el.innerHTML = `<span style="color:#f87171">✗ Key …${tail}: ${escHtml(extra || 'failed')}</span>`;
+}
+
+async function testApiKey() {
+  if (!state.apiKey) { showToast('⚠️ Save a key first', 'error'); return; }
+  const btn = document.getElementById('testKeyBtn');
+  btn.disabled = true; btn.textContent = '⏳ Testing...';
+  updateApiKeyStatus('testing');
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'Reply with just: OK' }],
+        max_tokens: 5
+      })
+    });
+    if (res.ok) {
+      showToast('✅ API key works perfectly!', 'success');
+      updateApiKeyStatus('ok');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      const msg = err.error?.message || `HTTP ${res.status}`;
+      showToast('❌ ' + msg, 'error');
+      updateApiKeyStatus('fail', msg);
+    }
+  } catch (e) {
+    const diag = diagnoseError(e);
+    showToast('❌ ' + diag.short, 'error');
+    updateApiKeyStatus('fail', diag.short);
+    // also log full diagnosis to console for the user to see in DevTools
+    console.error('[CopperAI] API test failed:', e);
+    console.log('[CopperAI] Diagnosis:\n' + diag.full);
+  } finally {
+    btn.disabled = false; btn.textContent = '🧪 Test';
+  }
+}
+
+// Translate raw fetch errors into actionable messages
+function diagnoseError(e) {
+  const msg = (e && e.message) || String(e);
+  if (msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('Network request failed')) {
+    return {
+      short: 'Network error reaching OpenAI. Open DevTools → Console for details.',
+      full: [
+        'Browser fetch to https://api.openai.com failed before getting a response.',
+        '',
+        'Common causes (try in this order):',
+        '1. Browser extension blocking it — try an Incognito/Private window',
+        '   (uBlock Origin, Privacy Badger, AdGuard, Brave Shields all can block OpenAI)',
+        '2. The API key is malformed — re-copy it from platform.openai.com/api-keys',
+        '   (make sure no leading/trailing spaces or newlines)',
+        '3. Your OpenAI account has no billing set up or no credits',
+        '   → https://platform.openai.com/account/billing',
+        '4. Your network/ISP/corporate firewall blocks api.openai.com',
+        '   → try mobile hotspot or VPN',
+        '5. The key is from a different OpenAI org that doesn\'t have gpt-4o-mini access',
+        '',
+        'Check DevTools → Network tab. If you see a CORS error, it is usually #1 or #4.',
+        'If you see a 401, the key is invalid. If 429, you have no credits.'
+      ].join('\n')
+    };
+  }
+  return { short: msg, full: msg };
+}
+
+function showPage(page) {
+  ['generatePage','historyPage','workbooksPage','deepDivePage'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  const target = document.getElementById(page + 'Page');
+  if (target) target.style.display = 'block';
+  ['Generate','History','Workbooks'].forEach(label => {
+    const btn = document.getElementById('nav' + label);
+    if (btn) btn.classList.toggle('active', label.toLowerCase() === page);
+  });
+  if (page === 'history')   renderHistory();
+  if (page === 'workbooks') renderWorkbooks();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// IDEA GENERATION
+async function generateIdeas() {
+  const data = state.setupData;
+  // Validate based on mode
+  if (!data.mode) { showToast('⚠️ Pick "Clone a Channel" or "Have My Own Ideas" first', 'error'); return; }
+  if (data.mode === 'clone' && !(data.channelUrl || '').trim()) { showToast('⚠️ Paste the YouTube channel URL or @handle', 'error'); return; }
+  if (data.mode === 'own'   && !(data.niche || '').trim())      { showToast('⚠️ Enter your niche', 'error'); return; }
+  if (!state.apiKey) { showToast('⚠️ Save and test your OpenAI API key first', 'error'); return; }
+
+  // Use niche field for the title; fallback to channel URL
+  const labelNiche = data.mode === 'clone'
+    ? (data.niche || `clone of ${data.channelUrl}`)
+    : data.niche;
+  state.niche = labelNiche;
+  state.allIdeas = []; state.shown = 0;
+
+  setGenLoading(true);
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('resultsTitle').textContent = data.mode === 'clone'
+    ? `Ideas modeled after ${data.channelUrl}`
+    : `Ideas for "${data.niche}"`;
+  document.getElementById('resultsSubtitle').textContent = 'Click "🚀 Deep Dive" on any idea — your setup carries over so you jump straight to script generation';
+  document.getElementById('loadMoreWrap').style.display = 'none';
+  showSkeletons(BATCH_SIZE);
+
+  try {
+    const ideas = await fetchIdeas(data, MAX_IDEAS);
+    state.allIdeas = ideas;
+    state.shown = ideas.length;
+    renderIdeas(ideas);
+    updateCounter();
+    showToast(`✨ Generated ${ideas.length} ideas!`, 'success');
+    // Persist mode for next visit
+    localStorage.setItem('copperai_setup_mode', data.mode);
+  } catch(e) {
+    const diag = diagnoseError(e);
+    showToast('❌ ' + diag.short, 'error');
+    console.error('[CopperAI] Generate failed:', e);
+    console.log('[CopperAI] Diagnosis:\n' + diag.full);
+    document.getElementById('ideasGrid').innerHTML = '';
+  } finally { setGenLoading(false); }
+}
+
+async function loadMore() {
+  if (state.loading) return;
+  const btn = document.getElementById('loadMoreBtn');
+  btn.classList.add('loading'); state.loading = true;
+  const next = state.allIdeas.slice(state.shown, state.shown + BATCH_SIZE);
+  if (!next.length) { btn.classList.remove('loading'); state.loading = false; return; }
+  await new Promise(r => setTimeout(r, 400));
+  appendIdeas(next);
+  state.shown += next.length;
+  document.getElementById('loadMoreCounter').textContent = `${state.shown} / ${state.allIdeas.length}`;
+  if (state.shown >= state.allIdeas.length) document.getElementById('loadMoreWrap').style.display = 'none';
+  updateCounter();
+  btn.classList.remove('loading'); state.loading = false;
+}
+
+async function fetchIdeas(setupData, count = 10) {
+  const transcripts = (setupData.transcripts || []).filter(t => (t || '').trim());
+  const lines = [];
+  if (setupData.mode === 'clone') {
+    lines.push(`The user wants to model their YouTube channel after: ${setupData.channelUrl}`);
+    if (setupData.niche) lines.push(`Niche focus: ${setupData.niche}`);
+  } else {
+    lines.push(`Niche: ${setupData.niche}`);
+  }
+  if (transcripts.length) {
+    lines.push(`\n${transcripts.length} reference transcript(s) showing the style they want:`);
+    transcripts.forEach((t, i) => lines.push(`\nTRANSCRIPT ${i+1}:\n"""\n${t.slice(0, 1500)}\n"""`));
+  }
+  if ((setupData.styleImages || []).length)     lines.push(`\nThey uploaded ${setupData.styleImages.length} video-style reference image(s).`);
+  if ((setupData.thumbnailImages || []).length) lines.push(`They uploaded ${setupData.thumbnailImages.length} thumbnail reference image(s).`);
+  const dur = (DURATIONS.find(d => d.v === setupData.duration) || {}).label || '10 min';
+  lines.push(`\nTarget video length: ${dur}`);
+  if (setupData.notes) lines.push(`User notes: ${setupData.notes}`);
+
+  const prompt = `You are a viral YouTube content strategist. Generate ${count} unique, highly clickable YouTube video ideas using the context below.
+
+CONTEXT:
+${lines.join('\n')}
+
+Generate ${count} ideas that match this creator's style and have viral potential.
+
+For each idea return a JSON object with EXACTLY these fields:
+- title: (string) compelling clickable YouTube title (max 80 chars)
+- description: (string) 1-2 sentence hook/concept (max 120 chars)
+- viral_score: (number) viral probability 70-99
+- tier: (string) one of: "VIRAL HIT", "HIGH POTENTIAL", "TRENDING"
+- outlier_factor: (string) psychological hook phrase (max 40 chars)
+- viewer_payoff: (string) what viewer gains phrase (max 40 chars)
+
+Return ONLY a valid JSON array of ${count} objects. No markdown, no explanation.`;
+
+  const data = await callOpenAI(prompt, { temperature: 0.85, max_tokens: 4000 });
+  const cleaned = data.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  const ideas = JSON.parse(cleaned);
+  if (!Array.isArray(ideas)) throw new Error('Invalid response format');
+  return ideas;
+}
+
+// OpenAI call with optional vision (images as base64 data URLs)
+async function callOpenAI(prompt, opts = {}) {
+  const images = opts.images || [];
+  let content;
+  if (images.length > 0) {
+    content = [
+      { type: 'text', text: prompt },
+      ...images.map(url => ({ type: 'image_url', image_url: { url: url } }))
+    ];
+  } else {
+    content = prompt;
+  }
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+    body: JSON.stringify({
+      model: opts.model || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: content }],
+      temperature: opts.temperature ?? 0.8,
+      max_tokens: opts.max_tokens ?? 2000
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
+}
+
+// IDEA CARDS
+function renderIdeas(ideas) { const g = document.getElementById('ideasGrid'); g.innerHTML = ''; ideas.forEach((idea, i) => g.appendChild(createCard(idea, i))); }
+function appendIdeas(ideas) { const g = document.getElementById('ideasGrid'); const s = g.children.length; ideas.forEach((idea, i) => g.appendChild(createCard(idea, s + i))); }
+
+function createCard(idea, idx, opts = {}) {
+  const score = Math.min(99, Math.max(70, idea.viral_score || 85));
+  const tier = (idea.tier || 'VIRAL HIT').toUpperCase();
+  const tierClass = tier === 'VIRAL HIT' ? 'viral-hit' : tier === 'HIGH POTENTIAL' ? 'high-pot' : 'trending';
+  const color = score >= 92 ? '#22c55e' : score >= 85 ? '#a855f7' : '#eab308';
+  const r = 28, circ = 2 * Math.PI * r, dash = circ - (score/100) * circ;
+  const isHistory = !!opts.history;
+  const saved = !isHistory && state.history.some(h => h.title === idea.title);
+  const nicheTag = isHistory && idea._niche ? `<span class="history-niche-tag">${escHtml(idea._niche)}</span>` : '';
+
+  const div = document.createElement('div');
+  div.className = 'idea-card';
+  div.innerHTML = `
+    <div class="card-top">
+      <div class="idea-meta">
+        <div class="idea-num">Idea #${idx + 1}</div>
+        ${nicheTag}
+        <span class="tag ${tierClass}">${tier}</span>
+      </div>
+      <div class="viral-score">
+        <svg viewBox="0 0 68 68">
+          <circle class="track" cx="34" cy="34" r="${r}"/>
+          <circle class="fill" cx="34" cy="34" r="${r}" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${dash}"/>
+        </svg>
+        <div class="label"><span class="pct" style="color:${color}">${score}%</span><span class="word">VIRAL</span></div>
+      </div>
+    </div>
+    <div class="idea-title">${escHtml(idea.title)}</div>
+    <div class="idea-desc">${escHtml(idea.description)}</div>
+    <div class="factors">
+      <div class="factor-box outlier">
+        <div class="factor-label">🚀 Outlier Factor</div>
+        <div class="factor-value">${escHtml(idea.outlier_factor)}</div>
+      </div>
+      <div class="factor-box payoff">
+        <div class="factor-label">🎯 Viewer Payoff</div>
+        <div class="factor-value">${escHtml(idea.viewer_payoff)}</div>
+      </div>
+    </div>
+    <div class="card-actions">
+      <button class="action-btn deep-btn" data-action="deepdive">🚀 Deep Dive →</button>
+      <div class="action-row">
+        <button class="action-btn" data-action="copy">📋 Copy</button>
+        ${isHistory
+          ? `<button class="action-btn delete-btn" data-action="delete">🗑 Remove</button>`
+          : `<button class="action-btn ${saved ? 'saved-btn' : 'save-btn'}" data-action="save" ${saved ? 'disabled' : ''}>${saved ? '✓ Saved' : '💾 Save'}</button>`}
+      </div>
+    </div>
+  `;
+
+  div.querySelector('[data-action="copy"]').addEventListener('click', () => copyIdea(idea));
+  div.querySelector('[data-action="deepdive"]').addEventListener('click', () => startDeepDive(idea, opts.niche || idea._niche || state.niche, isHistory));
+  const saveBtn = div.querySelector('[data-action="save"]');
+  if (saveBtn && !saveBtn.disabled) saveBtn.addEventListener('click', () => saveIdea(idea, saveBtn));
+  const delBtn = div.querySelector('[data-action="delete"]');
+  if (delBtn) delBtn.addEventListener('click', () => deleteFromHistory(idea, div));
+  return div;
+}
+
+// HISTORY
+function saveIdea(idea, btn) {
+  if (state.history.some(h => h.title === idea.title)) { showToast('Already saved', 'success'); return; }
+  state.history.unshift({ ...idea, _niche: state.niche, _savedAt: Date.now() });
+  localStorage.setItem('copperai_history', JSON.stringify(state.history));
+  if (btn) { btn.classList.remove('save-btn'); btn.classList.add('saved-btn'); btn.textContent = '✓ Saved'; btn.disabled = true; }
+  updateHistoryBadge();
+  showToast('💾 Saved to history!', 'success');
+}
+function deleteFromHistory(idea, cardEl) {
+  state.history = state.history.filter(h => h.title !== idea.title);
+  localStorage.setItem('copperai_history', JSON.stringify(state.history));
+  if (cardEl) {
+    cardEl.style.transition = 'opacity .2s, transform .2s';
+    cardEl.style.opacity = '0'; cardEl.style.transform = 'scale(.95)';
+    setTimeout(() => { cardEl.remove(); if (!state.history.length) renderHistory(); }, 200);
+  }
+  updateHistoryBadge();
+  showToast('Removed', 'success');
+}
+function renderHistory() {
+  const grid = document.getElementById('historyGrid');
+  const empty = document.getElementById('historyEmpty');
+  grid.innerHTML = '';
+  if (!state.history.length) { grid.style.display = 'none'; empty.style.display = 'block'; return; }
+  grid.style.display = 'grid'; empty.style.display = 'none';
+  state.history.forEach((idea, i) => grid.appendChild(createCard(idea, i, { history: true })));
+}
+function clearHistory() {
+  if (!state.history.length) { showToast('History is already empty', 'success'); return; }
+  if (!confirm(`Clear all ${state.history.length} saved ideas? This cannot be undone.`)) return;
+  state.history = []; localStorage.setItem('copperai_history', '[]');
+  renderHistory(); updateHistoryBadge();
+  showToast('🗑 History cleared', 'success');
+}
+function updateHistoryBadge() {
+  const b = document.getElementById('historyBadge');
+  if (b) b.textContent = state.history.length ? `(${state.history.length})` : '';
+}
+
+// IMAGE COMPRESSION (resize to max 1024px, JPEG q0.85)
+async function compressImage(file, maxDim = 1024) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        try { resolve(canvas.toDataURL('image/jpeg', 0.85)); } catch (err) { reject(err); }
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// WORKBOOK LIFECYCLE
+function startDeepDive(idea, niche, fromHistory) {
+  if (!state.apiKey) { showToast('⚠️ Please enter your OpenAI API key first to use Deep Dive', 'error'); return; }
+  const setup = state.setupData;
+  const hasSetup = !fromHistory && !!(setup && setup.mode && (setup.channelUrl || setup.niche || (setup.transcripts || []).some(t => t && t.trim())));
+
+  const wb = {
+    id: 'wb_' + Date.now(),
+    name: idea.title.length > 50 ? idea.title.slice(0, 50) + '…' : idea.title,
+    niche: hasSetup
+      ? (setup.niche || (setup.mode === 'clone' ? `Clone of ${setup.channelUrl}` : 'General'))
+      : (niche || idea._niche || 'General'),
+    ideaTitle: idea.title,
+    ideaDescription: idea.description || '',
+    ideaScore: idea.viral_score,
+    setupMode: hasSetup ? setup.mode : null,
+    states: STATES.map(s => {
+      const base = { n: s.n, input: '', output: '', skipped: false };
+
+      if (hasSetup) {
+        // State 1 (Channel Link): pre-fill input if cloning
+        if (s.n === 1) {
+          if (setup.mode === 'clone' && setup.channelUrl) base.input = setup.channelUrl;
+          else if (setup.mode === 'own') base.skipped = true;
+        }
+        // State 2 (Transcripts/References): pre-fill from setup
+        if (s.kind === 'transcripts') {
+          const ts = (setup.transcripts || []).filter(t => (t || '').trim());
+          base.transcripts = ts.length ? [...ts] : ['', '', ''];
+          base.styleImages = [...(setup.styleImages || [])];
+          base.thumbnailImages = [...(setup.thumbnailImages || [])];
+        }
+        // State 4 (Script): pre-fill duration + notes
+        if (s.kind === 'script') {
+          base.duration = setup.duration || '10';
+          if (setup.notes) base.input = setup.notes;
+        }
+      } else {
+        if (s.kind === 'transcripts') {
+          base.transcripts = ['', '', ''];
+          base.styleImages = [];
+          base.thumbnailImages = [];
+        }
+        if (s.kind === 'script') base.duration = '10';
+      }
+
+      if (s.kind === 'imagevideo') base.generateVideo = false;
+      return base;
+    }),
+    currentStateIdx: hasSetup ? 3 : 0,  // Jump straight to Script (State 4) when from setup
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  state.workbooks.unshift(wb);
+  saveWorkbooks();
+  openWorkbook(wb.id);
+  updateWorkbooksBadge();
+  showToast(hasSetup
+    ? `🚀 Workbook ready — your setup carried over. Hit "Generate" to write the script!`
+    : `🚀 Workbook created — let's build "${wb.name}"!`, 'success');
+}
+
+function openWorkbook(id) {
+  state.currentWorkbookId = id;
+  const wb = state.workbooks.find(w => w.id === id);
+  if (!wb) return;
+  // backwards-compat: ensure each state has the right fields
+  wb.states.forEach((sd, i) => {
+    const def = STATES[i]; if (!def) return;
+    if (def.kind === 'transcripts') {
+      if (!Array.isArray(sd.transcripts)) sd.transcripts = ['', '', ''];
+      if (!Array.isArray(sd.styleImages)) sd.styleImages = [];
+      if (!Array.isArray(sd.thumbnailImages)) sd.thumbnailImages = [];
+    }
+    if (def.kind === 'script' && !sd.duration) sd.duration = '10';
+    if (def.kind === 'imagevideo' && sd.generateVideo === undefined) sd.generateVideo = false;
+  });
+  state.currentStateIdx = wb.currentStateIdx || 0;
+  state.activePlatform = 'YouTube';
+  document.getElementById('ddNameInput').value = wb.name;
+  document.getElementById('ddNicheTag').textContent = wb.niche;
+  document.getElementById('ddIdeaTitle').textContent = wb.ideaTitle;
+  ['generatePage','historyPage','workbooksPage','deepDivePage'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('deepDivePage').style.display = 'block';
+  ['Generate','History','Workbooks'].forEach(label => {
+    const btn = document.getElementById('nav' + label);
+    if (btn) btn.classList.remove('active');
+  });
+  renderStepper();
+  renderState();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeDeepDive() { showPage('workbooks'); }
+function currentWorkbook() { return state.workbooks.find(w => w.id === state.currentWorkbookId); }
+function saveWorkbooks() {
+  try {
+    localStorage.setItem('copperai_workbooks_v2', JSON.stringify(state.workbooks));
+  } catch(e) {
+    showToast('⚠️ Storage full — try removing some images or older workbooks', 'error');
+  }
+}
+
+let saveTimer = null;
+function debouncedSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveWorkbooks, 350); }
+
+function onNameChange() {
+  const wb = currentWorkbook(); if (!wb) return;
+  wb.name = document.getElementById('ddNameInput').value || 'Untitled Workbook';
+  wb.updatedAt = Date.now();
+  debouncedSave();
+}
+
+function renderStepper() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const host = document.getElementById('stepper');
+  host.innerHTML = STATES.map((s, idx) => {
+    const sd = wb.states[idx];
+    const done = !!sd.output && !sd.skipped;
+    const skipped = sd.skipped;
+    const current = idx === state.currentStateIdx;
+    const cls = ['step', current && 'current', done && 'done', skipped && 'skipped'].filter(Boolean).join(' ');
+    const symbol = current ? s.n : (done ? '✓' : (skipped ? '⊘' : s.n));
+    return `<div class="${cls}" onclick="jumpToState(${idx})">
+      <div class="step-circle">${symbol}</div>
+      <div class="step-label">${escHtml(s.short)}</div>
+    </div>`;
+  }).join('');
+}
+
+function jumpToState(idx) {
+  const wb = currentWorkbook(); if (!wb) return;
+  state.currentStateIdx = idx;
+  wb.currentStateIdx = idx;
+  saveWorkbooks();
+  renderStepper(); renderState();
+}
+
+// STATE DISPATCHER
+function renderState() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const idx = state.currentStateIdx;
+  const def = STATES[idx];
+  const sd = wb.states[idx];
+
+  const headerHtml = `
+    <div class="state-num-row">
+      <span class="state-num">STATE ${def.n} of ${STATES.length}</span>
+      ${def.optional ? '<span class="state-optional-tag">Optional</span>' : ''}
+    </div>
+    <div class="state-title">${escHtml(def.title)}</div>
+    <div class="state-helper">${escHtml(def.helper)}</div>
+  `;
+
+  let bodyHtml = '';
+  if (def.kind === 'transcripts')      bodyHtml = renderTranscriptBody(sd);
+  else if (def.kind === 'script')      bodyHtml = renderScriptBody(sd, def);
+  else if (def.kind === 'imagevideo')  bodyHtml = renderImageVideoBody(sd, def);
+  else if (def.kind === 'platform')    bodyHtml = renderPlatformBody(sd, def);
+  else                                 bodyHtml = renderSimpleBody(sd, def);
+
+  document.getElementById('statePanelHost').innerHTML = `<div class="state-panel">${headerHtml}${bodyHtml}</div>`;
+
+  document.getElementById('ddPrev').disabled = idx === 0;
+  document.getElementById('ddSkip').disabled = !def.optional;
+  document.getElementById('ddNext').textContent = idx === STATES.length - 1 ? 'Finish ✓' : 'Next →';
+}
+
+// SIMPLE STATES (1, 3, 6, 7, 8)
+function renderSimpleBody(sd, def) {
+  return `
+    <div class="field-label">Your Input <span class="field-hint">${def.optional ? '(optional)' : ''}</span></div>
+    <textarea class="dd-textarea dd-input" id="stateInput" placeholder="${escAttr(def.inputPlaceholder || '')}" oninput="onSimpleInputChange()">${escHtml(sd.input || '')}</textarea>
+
+    <button class="ai-gen-btn" id="aiGenBtn" onclick="generateForState()">
+      <div class="spinner"></div>
+      <span class="btn-text">⚡ Generate with AI</span>
+    </button>
+
+    <div class="field-label">AI Output <span class="field-hint">(editable — your edits are saved)</span></div>
+    <textarea class="dd-textarea dd-output" id="stateOutput" placeholder="AI output appears here. You can edit it freely." oninput="onSimpleOutputChange()">${escHtml(sd.output || '')}</textarea>
+    <div class="copy-row"><button class="mini-btn" onclick="copyOutput()">📋 Copy Output</button></div>
+  `;
+}
+
+function onSimpleInputChange() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.input = document.getElementById('stateInput').value;
+  sd.skipped = false;
+  wb.updatedAt = Date.now();
+  debouncedSave();
+}
+function onSimpleOutputChange() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.output = document.getElementById('stateOutput').value;
+  if (sd.output) sd.skipped = false;
+  wb.updatedAt = Date.now();
+  debouncedSave();
+  renderStepper();
+}
+
+// STATE 2 — TRANSCRIPTS + IMAGE UPLOADS
+function renderTranscriptBody(sd) {
+  const tList = sd.transcripts.map((t, i) => `
+    <div class="transcript-item">
+      <div class="transcript-head">
+        <span>Transcript ${i + 1}</span>
+        ${sd.transcripts.length > 1 ? `<button class="transcript-remove" onclick="removeTranscript(${i})">Remove</button>` : ''}
+      </div>
+      <textarea class="dd-textarea" style="min-height:90px" placeholder="Paste transcript ${i + 1} here..." oninput="onTranscriptChange(${i}, this.value)">${escHtml(t)}</textarea>
+    </div>
+  `).join('');
+
+  const styleImgs = sd.styleImages.map((url, i) => `
+    <div class="image-preview"><img src="${url}" alt="style ${i+1}"/><button class="image-remove" onclick="removeStyleImage(${i})">×</button></div>
+  `).join('');
+  const thumbImgs = sd.thumbnailImages.map((url, i) => `
+    <div class="image-preview"><img src="${url}" alt="thumb ${i+1}"/><button class="image-remove" onclick="removeThumbnailImage(${i})">×</button></div>
+  `).join('');
+
+  return `
+    <div class="field-label">📝 Transcripts <span class="field-hint">(at least 3 recommended)</span></div>
+    <div class="transcript-list">${tList}</div>
+    <button class="add-transcript-btn" onclick="addTranscript()">＋ Add Another Transcript</button>
+
+    <div class="image-section">
+      <div class="image-section-title">🎬 Video Style References</div>
+      <div class="image-section-hint">Upload images showing the visual style you want for your videos (frames from videos, color grading, framing).</div>
+      <div class="image-grid">${styleImgs}</div>
+      <label class="upload-btn">📤 Upload Style Images
+        <input type="file" accept="image/*" multiple onchange="onStyleImageUpload(event)"/>
+      </label>
+    </div>
+
+    <div class="image-section">
+      <div class="image-section-title">🖼 Thumbnail References <span style="color:var(--muted);font-weight:500;font-size:.8rem">(3-4 recommended)</span></div>
+      <div class="image-section-hint">Upload thumbnails from the channel(s) you want yours to look like. AI will copy their composition + style.</div>
+      <div class="image-grid">${thumbImgs}</div>
+      <label class="upload-btn">📤 Upload Thumbnail Images
+        <input type="file" accept="image/*" multiple onchange="onThumbnailImageUpload(event)"/>
+      </label>
+    </div>
+
+    <button class="ai-gen-btn" id="aiGenBtn" onclick="generateForState()">
+      <div class="spinner"></div>
+      <span class="btn-text">⚡ Generate with AI ${sd.styleImages.length + sd.thumbnailImages.length > 0 ? '(uses your reference images)' : ''}</span>
+    </button>
+
+    <div class="field-label">AI Output <span class="field-hint">(editable)</span></div>
+    <textarea class="dd-textarea dd-output" id="stateOutput" placeholder="AI analysis appears here..." oninput="onSimpleOutputChange()">${escHtml(sd.output || '')}</textarea>
+    <div class="copy-row"><button class="mini-btn" onclick="copyOutput()">📋 Copy Output</button></div>
+  `;
+}
+
+function onTranscriptChange(idx, val) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.transcripts[idx] = val;
+  sd.skipped = false;
+  wb.updatedAt = Date.now();
+  debouncedSave();
+}
+function addTranscript() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.transcripts.push('');
+  saveWorkbooks();
+  renderState();
+}
+function removeTranscript(idx) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  if (sd.transcripts.length <= 1) return;
+  sd.transcripts.splice(idx, 1);
+  saveWorkbooks();
+  renderState();
+}
+
+async function onStyleImageUpload(ev) {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  showToast(`Compressing ${files.length} image(s)...`, 'success');
+  for (const f of files) {
+    try { sd.styleImages.push(await compressImage(f)); }
+    catch (e) { console.error(e); }
+  }
+  sd.skipped = false;
+  saveWorkbooks();
+  renderState();
+  ev.target.value = '';
+}
+async function onThumbnailImageUpload(ev) {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  showToast(`Compressing ${files.length} image(s)...`, 'success');
+  for (const f of files) {
+    try { sd.thumbnailImages.push(await compressImage(f)); }
+    catch (e) { console.error(e); }
+  }
+  sd.skipped = false;
+  saveWorkbooks();
+  renderState();
+  ev.target.value = '';
+}
+function removeStyleImage(idx) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.styleImages.splice(idx, 1);
+  saveWorkbooks();
+  renderState();
+}
+function removeThumbnailImage(idx) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.thumbnailImages.splice(idx, 1);
+  saveWorkbooks();
+  renderState();
+}
+
+// STATE 4 — SCRIPT (with duration selector)
+function renderScriptBody(sd, def) {
+  const chips = DURATIONS.map(d =>
+    `<button class="duration-chip ${sd.duration===d.v?'selected':''}" onclick="selectDuration('${d.v}')">${d.label}</button>`
+  ).join('');
+  return `
+    <div class="field-label">⏱ Target Video Length</div>
+    <div class="duration-grid">${chips}</div>
+
+    <div class="field-label">Your Notes <span class="field-hint">(optional)</span></div>
+    <textarea class="dd-textarea dd-input" id="stateInput" placeholder="${escAttr(def.inputPlaceholder)}" oninput="onSimpleInputChange()">${escHtml(sd.input || '')}</textarea>
+
+    <button class="ai-gen-btn" id="aiGenBtn" onclick="generateForState()">
+      <div class="spinner"></div>
+      <span class="btn-text">⚡ Generate ${(DURATIONS.find(d=>d.v===sd.duration)||{}).label || ''} Script</span>
+    </button>
+
+    <div class="field-label">Script <span class="field-hint">(editable)</span></div>
+    <textarea class="dd-textarea dd-output" id="stateOutput" placeholder="Your script will appear here..." oninput="onSimpleOutputChange()">${escHtml(sd.output || '')}</textarea>
+    <div class="copy-row"><button class="mini-btn" onclick="copyOutput()">📋 Copy Script</button></div>
+  `;
+}
+function selectDuration(v) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.duration = v;
+  wb.updatedAt = Date.now();
+  saveWorkbooks();
+  renderState();
+}
+
+// STATE 5 — IMAGE + VIDEO PROMPTS
+function renderImageVideoBody(sd, def) {
+  return `
+    <div class="field-label">Your Notes <span class="field-hint">(optional)</span></div>
+    <textarea class="dd-textarea dd-input" id="stateInput" placeholder="${escAttr(def.inputPlaceholder)}" oninput="onSimpleInputChange()">${escHtml(sd.input || '')}</textarea>
+
+    <label class="video-toggle">
+      <input type="checkbox" ${sd.generateVideo?'checked':''} onchange="toggleVideoPrompts(this.checked)"/>
+      <span class="video-toggle-label">🎥 Also generate video clip prompts</span>
+      <span class="video-toggle-hint">For Runway / Sora / Kling B-roll</span>
+    </label>
+
+    <button class="ai-gen-btn" id="aiGenBtn" onclick="generateForState()">
+      <div class="spinner"></div>
+      <span class="btn-text">⚡ Generate ${sd.generateVideo ? 'Image + Video' : 'Image'} Prompts</span>
+    </button>
+
+    <div class="field-label">AI Output <span class="field-hint">(editable)</span></div>
+    <textarea class="dd-textarea dd-output" id="stateOutput" placeholder="Image prompts (and optional video prompts) appear here..." oninput="onSimpleOutputChange()">${escHtml(sd.output || '')}</textarea>
+    <div class="copy-row"><button class="mini-btn" onclick="copyOutput()">📋 Copy Output</button></div>
+  `;
+}
+function toggleVideoPrompts(checked) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  sd.generateVideo = checked;
+  saveWorkbooks();
+  renderState();
+}
+
+// STATE 9 — PLATFORM TABS
+function renderPlatformBody(sd, def) {
+  const tabs = PLATFORMS.map(p =>
+    `<button class="platform-tab ${state.activePlatform===p?'active':''}" onclick="switchPlatform('${p}')">${p}</button>`
+  ).join('');
+  const view = extractPlatformSlice(sd.output || '', state.activePlatform);
+  return `
+    <div class="field-label">Your Notes <span class="field-hint">(optional)</span></div>
+    <textarea class="dd-textarea dd-input" id="stateInput" placeholder="${escAttr(def.inputPlaceholder)}" oninput="onSimpleInputChange()">${escHtml(sd.input || '')}</textarea>
+
+    <button class="ai-gen-btn" id="aiGenBtn" onclick="generateForState()">
+      <div class="spinner"></div>
+      <span class="btn-text">⚡ Generate All Platform Bundles</span>
+    </button>
+
+    <div class="field-label">AI Output <span class="field-hint">(per platform)</span></div>
+    <div class="platform-tabs">${tabs}</div>
+    <textarea class="dd-textarea dd-output" id="stateOutput" placeholder="Platform-specific publish bundles appear here..." oninput="onPlatformOutputChange()">${escHtml(view)}</textarea>
+    <div class="copy-row">
+      <button class="mini-btn" onclick="copyOutput()">📋 Copy ${state.activePlatform}</button>
+      <button class="mini-btn" onclick="copyAllPlatforms()">📋 Copy All Platforms</button>
+    </div>
+  `;
+}
+function switchPlatform(p) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  const ta = document.getElementById('stateOutput');
+  if (ta) {
+    sd.output = updatePlatformSlice(sd.output || '', state.activePlatform, ta.value);
+    saveWorkbooks();
+  }
+  state.activePlatform = p;
+  renderState();
+}
+function onPlatformOutputChange() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  const val = document.getElementById('stateOutput').value;
+  sd.output = updatePlatformSlice(sd.output || '', state.activePlatform, val);
+  if (sd.output) sd.skipped = false;
+  wb.updatedAt = Date.now();
+  debouncedSave();
+  renderStepper();
+}
+function extractPlatformSlice(full, platform) {
+  if (!full) return '';
+  const upper = platform.toUpperCase();
+  const re = new RegExp('===\\s*' + upper + '\\s*===([\\s\\S]*?)(?====\\s*[A-Z]+\\s*===|$)', 'i');
+  const m = full.match(re);
+  return m ? m[1].trim() : full;
+}
+function updatePlatformSlice(full, platform, newSlice) {
+  const upper = platform.toUpperCase();
+  if (!full) return '=== ' + upper + ' ===\n' + newSlice;
+  const re = new RegExp('(===\\s*' + upper + '\\s*===)([\\s\\S]*?)(?=(===\\s*[A-Z]+\\s*===|$))', 'i');
+  if (re.test(full)) return full.replace(re, '$1\n' + newSlice + '\n\n');
+  return full + '\n\n=== ' + upper + ' ===\n' + newSlice;
+}
+
+// AI GENERATION
+async function generateForState() {
+  if (!state.apiKey) { showToast('⚠️ API key required', 'error'); return; }
+  const wb = currentWorkbook(); if (!wb) return;
+  const idx = state.currentStateIdx;
+  const def = STATES[idx];
+  const sd = wb.states[idx];
+
+  // Build context with prior state outputs by state number
+  const ctx = {
+    niche: wb.niche,
+    ideaTitle: wb.ideaTitle,
+    ideaDescription: wb.ideaDescription,
+    input: sd.input || '',
+    prev: {}
+  };
+  STATES.forEach((s, i) => { ctx.prev[s.n] = wb.states[i].output || ''; });
+
+  // State-specific context fields
+  let images = [];
+  if (def.kind === 'transcripts') {
+    ctx.transcripts = sd.transcripts || [];
+    ctx.styleImagesCount = sd.styleImages.length;
+    ctx.thumbnailImagesCount = sd.thumbnailImages.length;
+    images = [...sd.styleImages, ...sd.thumbnailImages];
+  }
+  if (def.kind === 'script')      ctx.duration = sd.duration || '10';
+  if (def.kind === 'imagevideo')  {
+    ctx.generateVideo = sd.generateVideo;
+    // pull style images from state 2 for vision reference
+    const s2 = wb.states.find(x => x.n === 2);
+    if (s2 && s2.styleImages) {
+      ctx.styleImagesCount = s2.styleImages.length;
+      images = s2.styleImages;
+    } else {
+      ctx.styleImagesCount = 0;
+    }
+  }
+  if (def.n === 7) { // thumbnails state pulls thumbnail refs from state 2
+    const s2 = wb.states.find(x => x.n === 2);
+    if (s2 && s2.thumbnailImages) {
+      ctx.thumbnailImagesCount = s2.thumbnailImages.length;
+      images = s2.thumbnailImages;
+    } else {
+      ctx.thumbnailImagesCount = 0;
+    }
+  }
+
+  const prompt = def.buildPrompt(ctx);
+  const btn = document.getElementById('aiGenBtn');
+  btn.classList.add('loading'); btn.disabled = true;
+
+  try {
+    const opts = { temperature: 0.8, max_tokens: def.maxTokens || 2200 };
+    if (def.useVision && images.length > 0) opts.images = images;
+    const result = await callOpenAI(prompt, opts);
+    sd.output = result;
+    sd.skipped = false;
+    wb.updatedAt = Date.now();
+    saveWorkbooks();
+    if (def.isPlatform) state.activePlatform = 'YouTube';
+    renderState(); renderStepper();
+    showToast('✨ Generated!', 'success');
+  } catch(e) {
+    showToast('❌ ' + (e.message || 'Generation failed'), 'error');
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+
+// NAVIGATION
+function navState(delta) {
+  const wb = currentWorkbook(); if (!wb) return;
+  const newIdx = state.currentStateIdx + delta;
+  if (newIdx < 0) return;
+  if (newIdx >= STATES.length) {
+    showToast('🎉 Workbook complete! Use Export to download.', 'success');
+    return;
+  }
+  state.currentStateIdx = newIdx;
+  wb.currentStateIdx = newIdx;
+  saveWorkbooks();
+  renderStepper(); renderState();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function skipState() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const idx = state.currentStateIdx;
+  const def = STATES[idx];
+  if (!def.optional) { showToast('This state is required', 'error'); return; }
+  wb.states[idx].skipped = true;
+  saveWorkbooks();
+  renderStepper();
+  navState(1);
+}
+
+// COPY
+function copyOutput() {
+  const v = document.getElementById('stateOutput').value;
+  if (!v) { showToast('Nothing to copy yet', 'error'); return; }
+  navigator.clipboard.writeText(v).then(() => showToast('📋 Copied!', 'success'));
+}
+function copyAllPlatforms() {
+  const wb = currentWorkbook(); if (!wb) return;
+  const sd = wb.states[state.currentStateIdx];
+  if (!sd.output) { showToast('Nothing to copy yet', 'error'); return; }
+  navigator.clipboard.writeText(sd.output).then(() => showToast('📋 All platform versions copied!', 'success'));
+}
+
+// EXPORT
+function exportWorkbook() {
+  const wb = currentWorkbook(); if (!wb) { showToast('No workbook open', 'error'); return; }
+  const lines = [];
+  lines.push('# ' + wb.name);
+  lines.push('');
+  lines.push('**Niche:** ' + wb.niche);
+  lines.push('**Idea:** ' + wb.ideaTitle);
+  if (wb.ideaDescription) lines.push('**Description:** ' + wb.ideaDescription);
+  if (wb.ideaScore) lines.push('**Viral Score:** ' + wb.ideaScore + '%');
+  lines.push('**Created:** ' + new Date(wb.createdAt).toLocaleString());
+  lines.push(''); lines.push('---'); lines.push('');
+
+  STATES.forEach((def, i) => {
+    const sd = wb.states[i];
+    lines.push('## STATE ' + def.n + ' — ' + def.title + (sd.skipped ? ' _(skipped)_' : ''));
+    lines.push('');
+    if (def.kind === 'transcripts') {
+      const ts = (sd.transcripts || []).filter(t => t.trim());
+      if (ts.length) {
+        ts.forEach((t, ix) => { lines.push('### Transcript ' + (ix+1)); lines.push(t); lines.push(''); });
+      }
+      if (sd.styleImages && sd.styleImages.length) lines.push('_' + sd.styleImages.length + ' style reference image(s) attached in workbook_');
+      if (sd.thumbnailImages && sd.thumbnailImages.length) lines.push('_' + sd.thumbnailImages.length + ' thumbnail reference image(s) attached in workbook_');
+      lines.push('');
+    } else {
+      if (sd.input) { lines.push('### Input'); lines.push(sd.input); lines.push(''); }
+    }
+    if (def.kind === 'script' && sd.duration) lines.push('**Target duration:** ' + ((DURATIONS.find(d => d.v === sd.duration) || {}).label || sd.duration + ' min') + '\n');
+    if (def.kind === 'imagevideo') lines.push('**Video prompts:** ' + (sd.generateVideo ? 'yes' : 'no') + '\n');
+
+    if (sd.output) { lines.push('### Output'); lines.push(sd.output); lines.push(''); }
+    if (!sd.output && !sd.skipped && def.kind !== 'transcripts') lines.push('_(empty)_');
+    lines.push(''); lines.push('---'); lines.push('');
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = wb.name.replace(/[^\w\-]+/g, '_') + '.md';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  showToast('⬇ Workbook exported as Markdown!', 'success');
+}
+
+// WORKBOOKS LIST
+function renderWorkbooks() {
+  const grid = document.getElementById('workbooksGrid');
+  const empty = document.getElementById('workbooksEmpty');
+  grid.innerHTML = '';
+  if (!state.workbooks.length) { grid.style.display = 'none'; empty.style.display = 'block'; return; }
+  grid.style.display = 'grid'; empty.style.display = 'none';
+  state.workbooks.forEach(wb => grid.appendChild(createWorkbookCard(wb)));
+}
+
+function createWorkbookCard(wb) {
+  const completed = wb.states.filter(s => s.output && !s.skipped).length;
+  const skipped = wb.states.filter(s => s.skipped).length;
+  const total = STATES.length;
+  const pct = Math.round(((completed + skipped) / total) * 100);
+  const div = document.createElement('div');
+  div.className = 'workbook-card';
+  div.innerHTML = `
+    <div><span class="history-niche-tag">${escHtml(wb.niche)}</span></div>
+    <div class="wb-name">${escHtml(wb.name)}</div>
+    <div class="wb-meta"><span>📝 ${escHtml(wb.ideaTitle.length > 60 ? wb.ideaTitle.slice(0, 60) + '…' : wb.ideaTitle)}</span></div>
+    <div class="wb-progress-bar"><div class="wb-progress-fill" style="width:${pct}%"></div></div>
+    <div class="wb-meta">
+      <span>${completed}/${total} done${skipped ? ` · ${skipped} skipped` : ''}</span>
+      <span>·</span>
+      <span>Updated ${timeAgo(wb.updatedAt)}</span>
+    </div>
+    <div class="wb-actions">
+      <button class="action-btn" data-act="open">📂 Open</button>
+      <button class="action-btn delete-btn" data-act="del">🗑</button>
+    </div>
+  `;
+  div.querySelector('[data-act="open"]').addEventListener('click', (e) => { e.stopPropagation(); openWorkbook(wb.id); });
+  div.querySelector('[data-act="del"]').addEventListener('click', (e) => { e.stopPropagation(); deleteWorkbook(wb.id); });
+  div.addEventListener('click', () => openWorkbook(wb.id));
+  return div;
+}
+
+function deleteWorkbook(id) {
+  const wb = state.workbooks.find(w => w.id === id);
+  if (!wb) return;
+  if (!confirm(`Delete workbook "${wb.name}"? This cannot be undone.`)) return;
+  state.workbooks = state.workbooks.filter(w => w.id !== id);
+  saveWorkbooks();
+  renderWorkbooks();
+  updateWorkbooksBadge();
+  showToast('Workbook deleted', 'success');
+}
+function clearWorkbooks() {
+  if (!state.workbooks.length) { showToast('No workbooks to clear', 'success'); return; }
+  if (!confirm(`Delete all ${state.workbooks.length} workbooks? This cannot be undone.`)) return;
+  state.workbooks = [];
+  saveWorkbooks();
+  renderWorkbooks();
+  updateWorkbooksBadge();
+  showToast('All workbooks cleared', 'success');
+}
+function updateWorkbooksBadge() {
+  const b = document.getElementById('workbooksBadge');
+  if (b) b.textContent = state.workbooks.length ? `(${state.workbooks.length})` : '';
+}
+
+// UTILS
+async function copyIdea(idea) {
+  try {
+    await navigator.clipboard.writeText(idea.title);
+    showToast('📋 Title copied!', 'success');
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = idea.title; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast('📋 Title copied!', 'success'); } catch { showToast('❌ Copy failed', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+function setGenLoading(loading) {
+  const btn = document.getElementById('genBtn');
+  btn.classList.toggle('loading', loading);
+  btn.disabled = loading;
+}
+function showSkeletons(n) {
+  const grid = document.getElementById('ideasGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const div = document.createElement('div');
+    div.className = 'skeleton-card';
+    div.innerHTML = `<div class="skeleton skel-line short"></div><div class="skeleton skel-line full"></div><div class="skeleton skel-line medium"></div><div class="skeleton skel-block"></div>`;
+    grid.appendChild(div);
+  }
+}
+function updateCounter() {
+  const c = document.getElementById('ideasCounter');
+  if (c) c.textContent = `Showing ${state.shown} of ${state.allIdeas.length}`;
+}
+let toastTimer = null;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function escAttr(s) { return escHtml(s); }
+function truncate(s, n) {
+  if (!s) return '';
+  s = String(s);
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+
+// ========== SETUP FORM (LANDING) ==========
+function onModeChange() {
+  const mode = document.getElementById('setupMode').value;
+  state.setupData.mode = mode;
+  if (mode) localStorage.setItem('copperai_setup_mode', mode);
+  renderSetupFields();
+}
+
+function renderSetupFields() {
+  const mode = state.setupData.mode;
+  const fieldsHost = document.getElementById('setupFields');
+  const genBtn = document.getElementById('genBtn');
+  if (!mode) {
+    fieldsHost.style.display = 'none';
+    genBtn.style.display = 'none';
+    return;
+  }
+  fieldsHost.style.display = 'block';
+  genBtn.style.display = 'flex';
+
+  const data = state.setupData;
+  let html = '<div class="setup-divider"></div>';
+
+  // ===== Mode-specific fields =====
+  if (mode === 'clone') {
+    html += `
+      <div class="setup-section">
+        <div class="section-label">🔗 YouTube Channel to Clone</div>
+        <input type="text" class="setup-input" placeholder="https://www.youtube.com/@channelname  or  @channelname"
+               value="${escAttr(data.channelUrl || '')}"
+               oninput="onSetupFieldChange('channelUrl', this.value)"/>
+        <div class="section-label" style="margin-top:8px">📂 Niche / Category <span style="font-weight:500;text-transform:none;color:var(--muted)">(optional — helps AI focus)</span></div>
+        <input type="text" class="setup-input" placeholder="e.g. Finance, Tech Reviews, Cooking..."
+               value="${escAttr(data.niche || '')}"
+               oninput="onSetupFieldChange('niche', this.value)"/>
+      </div>`;
+  } else { // 'own'
+    html += `
+      <div class="setup-section">
+        <div class="section-label">🎯 Pick a Niche</div>
+        <div class="niches">${NICHES.map(n =>
+          `<button class="niche-chip ${data.niche===n?'selected':''}" onclick="selectSetupNiche('${escAttr(n)}')">${n}</button>`
+        ).join('')}</div>
+        <div class="section-label" style="margin-top:14px">Or type your own</div>
+        <input type="text" class="setup-input" placeholder="e.g. Personal Finance, Travel, Side Hustles..."
+               value="${escAttr(data.niche || '')}"
+               oninput="onSetupFieldChange('niche', this.value)"/>
+      </div>`;
+  }
+
+  // ===== Common: transcripts =====
+  const tList = (data.transcripts || []).map((t, i) => `
+    <div class="transcript-item">
+      <div class="transcript-head">
+        <span>Transcript ${i + 1}</span>
+        ${data.transcripts.length > 1 ? `<button class="transcript-remove" onclick="removeSetupTranscript(${i})">Remove</button>` : ''}
+      </div>
+      <textarea class="dd-textarea" style="min-height:90px" placeholder="Paste transcript ${i+1} from a successful video in this niche..."
+                oninput="onSetupTranscriptChange(${i}, this.value)">${escHtml(t)}</textarea>
+    </div>`).join('');
+
+  html += `
+    <div class="setup-section">
+      <div class="section-label">📝 Reference Transcripts <span style="font-weight:500;text-transform:none;color:var(--muted)">(at least 3 recommended — paste from videos you want to model after)</span></div>
+      <div class="transcript-list">${tList}</div>
+      <button class="add-transcript-btn" onclick="addSetupTranscript()">＋ Add Another Transcript</button>
+    </div>`;
+
+  // ===== Common: style images =====
+  const styleImgs = (data.styleImages || []).map((url, i) =>
+    `<div class="image-preview"><img src="${url}" alt="style ${i+1}"/><button class="image-remove" onclick="removeSetupStyleImage(${i})">×</button></div>`
+  ).join('');
+
+  html += `
+    <div class="image-section">
+      <div class="image-section-title">🎬 Video Style Reference Images</div>
+      <div class="image-section-hint">Upload screenshots / frames showing the visual style you want (color grading, framing, mood). AI uses these to guide image prompts.</div>
+      <div class="image-grid">${styleImgs}</div>
+      <label class="upload-btn">📤 Upload Style Images
+        <input type="file" accept="image/*" multiple onchange="onSetupStyleImageUpload(event)"/>
+      </label>
+    </div>`;
+
+  // ===== Common: thumbnail images =====
+  const thumbImgs = (data.thumbnailImages || []).map((url, i) =>
+    `<div class="image-preview"><img src="${url}" alt="thumb ${i+1}"/><button class="image-remove" onclick="removeSetupThumbnailImage(${i})">×</button></div>`
+  ).join('');
+
+  html += `
+    <div class="image-section">
+      <div class="image-section-title">🖼 Thumbnail Reference Images <span style="color:var(--muted);font-weight:500;font-size:.8rem">(3-4 recommended)</span></div>
+      <div class="image-section-hint">Upload thumbnails you want yours to look like. AI matches their composition, text style, and emotional hook.</div>
+      <div class="image-grid">${thumbImgs}</div>
+      <label class="upload-btn">📤 Upload Thumbnail Images
+        <input type="file" accept="image/*" multiple onchange="onSetupThumbnailImageUpload(event)"/>
+      </label>
+    </div>`;
+
+  // ===== Common: duration =====
+  html += `
+    <div class="setup-section">
+      <div class="section-label">⏱ Target Video Length</div>
+      <div class="duration-grid">${DURATIONS.map(d =>
+        `<button class="duration-chip ${data.duration===d.v?'selected':''}" onclick="selectSetupDuration('${d.v}')">${d.label}</button>`
+      ).join('')}</div>
+    </div>`;
+
+  // ===== Common: optional notes =====
+  html += `
+    <div class="setup-section">
+      <div class="section-label">💭 Anything else? <span style="font-weight:500;text-transform:none;color:var(--muted)">(optional)</span></div>
+      <textarea class="dd-textarea" style="min-height:80px" placeholder="e.g. 'I want angles for beginners', 'Avoid politics', 'Hook should focus on income'..."
+                oninput="onSetupFieldChange('notes', this.value)">${escHtml(data.notes || '')}</textarea>
+    </div>`;
+
+  fieldsHost.innerHTML = html;
+}
+
+function onSetupFieldChange(field, value) { state.setupData[field] = value; }
+function selectSetupNiche(n)              { state.setupData.niche = n; renderSetupFields(); }
+function selectSetupDuration(v)           { state.setupData.duration = v; renderSetupFields(); }
+
+function addSetupTranscript()    { state.setupData.transcripts.push(''); renderSetupFields(); }
+function removeSetupTranscript(i){ if (state.setupData.transcripts.length <= 1) return; state.setupData.transcripts.splice(i, 1); renderSetupFields(); }
+function onSetupTranscriptChange(i, v) { state.setupData.transcripts[i] = v; }
+
+async function onSetupStyleImageUpload(ev) {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  showToast(`Compressing ${files.length} image(s)...`, 'success');
+  for (const f of files) {
+    try { state.setupData.styleImages.push(await compressImage(f)); }
+    catch (e) { console.error(e); }
+  }
+  renderSetupFields();
+  ev.target.value = '';
+}
+async function onSetupThumbnailImageUpload(ev) {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  showToast(`Compressing ${files.length} image(s)...`, 'success');
+  for (const f of files) {
+    try { state.setupData.thumbnailImages.push(await compressImage(f)); }
+    catch (e) { console.error(e); }
+  }
+  renderSetupFields();
+  ev.target.value = '';
+}
+function removeSetupStyleImage(i)     { state.setupData.styleImages.splice(i, 1); renderSetupFields(); }
+function removeSetupThumbnailImage(i) { state.setupData.thumbnailImages.splice(i, 1); renderSetupFields(); }
+</script>
+</body>
+</html>
