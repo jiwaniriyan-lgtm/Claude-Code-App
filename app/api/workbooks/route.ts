@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     .from('workbooks')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', auth.user.id);
-  const limit = checkTierLimit(profile?.tier ?? 'free', 'newWorkbook', { activeWorkbooks: wbCount || 0 });
+  const limit = checkTierLimit(profile?.tier ?? 'free', 'newWorkbook', { activeWorkbooks: wbCount || 0 }, { adminEmail: profile?.email });
   if (!limit.ok) return NextResponse.json({ error: limit.reason, code: 'tier_limit' }, { status: 402 });
 
   const { data: wb, error: wbErr } = await supabase

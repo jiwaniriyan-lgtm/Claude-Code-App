@@ -45,9 +45,20 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
   };
 }
 
-/** Effective tier — falls back to free if trial expired without subscription. */
+const ADMIN_EMAILS = new Set(
+  ['jiwaniriyan@gmail.com', ...(process.env.ADMIN_EMAILS?.split(',') ?? [])]
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+export function isAdmin(email: string | null | undefined): boolean {
+  return !!email && ADMIN_EMAILS.has(email.toLowerCase());
+}
+
+/** Effective tier — admins get top tier; otherwise the profile's tier (or free). */
 export function effectiveTier(profile: Profile | null): TierId {
   if (!profile) return 'free';
+  if (isAdmin(profile.email)) return 'agency';
   return profile.tier;
 }
 
@@ -56,7 +67,9 @@ export function checkTierLimit(
   tier: TierId,
   action: 'newWorkbook' | 'generateIdea' | 'longScript' | 'videoPrompts' | 'visionImage',
   current: { activeWorkbooks?: number; ideasThisMonth?: number; visionImagesAttached?: number; durationMin?: number },
+  opts?: { adminEmail?: string | null },
 ): { ok: true } | { ok: false; reason: string } {
+  if (isAdmin(opts?.adminEmail)) return { ok: true };
   const limits = PRICING_TIERS[tier].limits as {
     activeWorkbooks: number;
     ideasPerMonth: number;

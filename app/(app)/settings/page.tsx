@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser, getProfile, getUsageStats } from '@/lib/auth';
+import { effectiveTier, getCurrentUser, getProfile, getUsageStats } from '@/lib/auth';
 import { PRICING_TIERS } from '@/lib/constants';
 import SettingsClient from './settings-client';
 
@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   if (!user) redirect('/login');
   const profile = await getProfile();
   const usage = await getUsageStats(user.id);
-  const tier = profile?.tier ?? 'free';
+  const tier = effectiveTier(profile);
 
   return (
     <SettingsClient
