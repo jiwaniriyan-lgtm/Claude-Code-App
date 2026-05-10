@@ -83,14 +83,24 @@
 
 ---
 
-## 🎥 VIDEO CLIPS (2 hero clips generated via Seedance 2.0, 6s @ 720p 16:9)
+## 🎥 VIDEO CLIPS (all 12 generated via Seedance 2.0, 720p 16:9)
 
-| ID | Description | Job ID |
-|---|---|---|
-| VID-01 | Hook dolly-in on worried investor | `aab900b7-abbe-4d0e-a8f6-f111a4bad505` |
-| VID-02 | 90% numeral particle reveal | `c646f213-9c9d-477a-86ed-fb545e36d7a9` |
+| ID | Description | Duration | Job ID |
+|---|---|---|---|
+| VID-01 | Hook dolly-in on worried investor | 6s | `aab900b7-abbe-4d0e-a8f6-f111a4bad505` |
+| VID-02 | 90% numeral particle reveal | 6s | `c646f213-9c9d-477a-86ed-fb545e36d7a9` |
+| VID-03 | Office crane shot establishing | 8s | `734d7ad6-63ad-43af-8a21-bcba41c628c3` |
+| VID-04 | Panic-sell keyboard smash | 6s | `5795cef5-de34-4a09-9970-9eb457bcde17` |
+| VID-05 | Fear vs greed split portrait | 7s | `1f7698ed-37d0-4f75-9058-6d2d6ab9598a` |
+| VID-06 | Research grind time-lapse | 8s | `17e97a73-6895-4e7c-b541-6f0750021ae8` |
+| VID-07 | Library books push-in | 7s | `af2a80e0-bb57-464a-977f-a9908f23402f` |
+| VID-08 | Crystal ball storm metaphor | 7s | `21d75a35-ab2d-4c56-940f-4ada8e978f3a` |
+| VID-09 | Dollar-cost averaging animation | 8s | `d08ce660-ea16-47c2-b0af-aea4d283990f` |
+| VID-10 | Eggs basket slow-mo tipping | 7s | `1b145283-a44b-45c6-9b25-a21bc7c4ff80` |
+| VID-11 | Money-tree orchard time-lapse | 8s | `72264f6a-069a-4124-991d-80bd46f47451` |
+| VID-12 | Host warm subscribe outro | 6s | `4241a841-9b45-463e-89a1-4fe9b3cacb89` |
 
-> Both clips render in the asset workspace UI; download from there. The remaining 10 video clips (VID-03 → VID-12) can be generated on demand — each costs ~75 credits at 720p/6s. Tell me to continue and I'll run the rest.
+> All 12 clips render in the asset workspace UI; final MP4 URLs appear under each job after rendering completes (~1–3 min per clip). Total runtime: 84 seconds of B-roll footage covering every script segment.
 
 ---
 
@@ -103,13 +113,12 @@ Voice generation requires ElevenLabs (no MCP integration available here). The fu
 ## ✅ PRODUCTION STATUS
 
 - [x] 4 thumbnail concepts generated
-- [x] 24 B-roll images generated (1 retry pending)
-- [x] 2 hero video clips queued/rendering
-- [ ] 10 remaining video clips (run on demand)
+- [x] 24 B-roll images generated
+- [x] 12 video clips queued/rendering (84s total B-roll footage)
 - [ ] Voice over render (ElevenLabs — manual)
 - [ ] Edit assembly (Premiere/DaVinci)
 - [ ] Thumbnail text overlay (Canva/Photoshop)
 - [ ] YouTube upload with vidIQ-optimized metadata
 
-**Total credits spent so far:** ~440 (28 images @ ~10ea + 2 videos @ ~75ea)
-**Remaining balance:** ~8,479 credits
+**Total credits spent:** ~1,190 (29 images @ ~10ea + 12 videos @ ~75ea)
+**Remaining balance:** ~7,729 credits
