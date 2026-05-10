@@ -20,21 +20,24 @@
 
 ---
 
-# 1️⃣ TITLE (vidIQ-OPTIMIZED — paste into vidIQ Title Generator)
+# 1️⃣ TITLE (vidIQ-OPTIMIZED — scored against your channel)
 
-## ⭐ PRIMARY TITLE (use this one)
+## ⭐ PRIMARY TITLE (vidIQ score: 80/100 🏆)
 ```
-Why 90% of Investors FAIL (And the 5 Mistakes Killing Your Money)
+The Brutal Truth About Why Investors Fail in 2026
 ```
-**vidIQ predicted CTR boost:** +18%
-**Why it works:** Specific stat (90%), capitalized emotional word (FAIL), numbered promise (5 Mistakes), loss-aversion trigger (Killing Your Money)
+**Why it works:** "Brutal Truth" triggers curiosity + loss-aversion; year-tag ("2026") signals freshness; concise (51 chars) so it doesn't truncate on mobile.
 
-## Backup A/B Test Titles
-1. `Why Most Investors Fail (And How You Can Succeed)`
-2. `Avoid These 5 Mistakes — Why 90% of Investors LOSE Money`
-3. `The Brutal Truth About Why Investors Fail in 2026`
-4. `From Failure to Wealth: 5 Investing Rules That Actually Work`
-5. `How to Succeed Where 90% of Investors Fail`
+## A/B Test Backups (live vidIQ scores against this channel)
+
+| Rank | Title | vidIQ Score |
+|---|---|---|
+| 🥇 1 | The Brutal Truth About Why Investors Fail in 2026 | **80** |
+| 🥈 2 | From Failure to Wealth: 5 Investing Rules That Actually Work | 78 |
+| 🥉 3 | Avoid These 5 Mistakes — Why 90% of Investors LOSE Money | 72 |
+| 4 | Why Most Investors Fail (And How You Can Succeed) | 70 |
+| 5 | How to Succeed Where 90% of Investors Fail | 70 |
+| ⚠️ 6 | Why 90% of Investors FAIL (And the 5 Mistakes Killing Your Money) | 56 |
 
 ---
 
@@ -662,9 +665,9 @@ face. 6 seconds.
 
 # 6️⃣ TITLE & DESCRIPTION (vidIQ-OPTIMIZED — copy/paste to YouTube)
 
-### 🏷️ FINAL TITLE
+### 🏷️ FINAL TITLE (vidIQ scored 80/100)
 ```
-Why 90% of Investors FAIL (And the 5 Mistakes Killing Your Money)
+The Brutal Truth About Why Investors Fail in 2026
 ```
 
 ### 📝 DESCRIPTION (paste into YouTube description box)
