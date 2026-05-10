@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
-const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
+const model = process.env.ANTHROPIC_MODEL || 'claude-opus-4-7';
 
 if (!apiKey && process.env.NODE_ENV !== 'test') {
   console.warn('[anthropic] ANTHROPIC_API_KEY not set — server proxy will fail until you set it.');
@@ -65,7 +65,7 @@ export async function callClaude(opts: CallOptions): Promise<CallResult> {
   };
 }
 
-// claude-sonnet-4-6 pricing: $3 / 1M input, $15 / 1M output.
+// claude-opus-4-7 pricing: $5 / 1M input, $25 / 1M output.
 export function estimateCostUsd(tokensIn: number, tokensOut: number): number {
-  return (tokensIn * 3 + tokensOut * 15) / 1_000_000;
+  return (tokensIn * 5 + tokensOut * 25) / 1_000_000;
 }
