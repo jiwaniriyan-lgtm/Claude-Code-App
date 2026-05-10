@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
-import { callOpenAI, estimateCostUsd } from '@/lib/openai';
+import { callClaude, estimateCostUsd } from '@/lib/anthropic';
 import { buildIdeaPrompt } from '@/lib/prompts';
 import { checkTierLimit, getProfile, getUsageStats } from '@/lib/auth';
 import { MAX_IDEAS } from '@/lib/constants';
@@ -42,9 +42,9 @@ export async function POST(request: Request) {
 
   let result;
   try {
-    result = await callOpenAI({ prompt, temperature: 0.85, maxTokens: 4000 });
+    result = await callClaude({ prompt, maxTokens: 4000 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'OpenAI error' }, { status: 502 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Claude error' }, { status: 502 });
   }
 
   const cleaned = result.content
