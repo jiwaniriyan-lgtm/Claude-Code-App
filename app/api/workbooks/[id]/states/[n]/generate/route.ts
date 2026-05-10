@@ -75,11 +75,11 @@ export async function POST(request: Request, { params }: { params: { id: string;
   const profile = await getProfile();
   if (stateN === 4 && parsed.data.duration) {
     const durMin = parseInt(parsed.data.duration, 10) || 10;
-    const limit = checkTierLimit(profile?.tier ?? 'free', 'longScript', { durationMin: durMin });
+    const limit = checkTierLimit(profile?.tier ?? 'free', 'longScript', { durationMin: durMin }, { adminEmail: profile?.email });
     if (!limit.ok) return NextResponse.json({ error: limit.reason, code: 'tier_limit' }, { status: 402 });
   }
   if (stateN === 5 && parsed.data.generateVideo) {
-    const limit = checkTierLimit(profile?.tier ?? 'free', 'videoPrompts', {});
+    const limit = checkTierLimit(profile?.tier ?? 'free', 'videoPrompts', {}, { adminEmail: profile?.email });
     if (!limit.ok) return NextResponse.json({ error: limit.reason, code: 'tier_limit' }, { status: 402 });
   }
 

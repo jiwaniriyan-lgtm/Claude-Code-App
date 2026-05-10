@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
   const profile = await getProfile();
   const usage = await getUsageStats(auth.user.id);
-  const limit = checkTierLimit(profile?.tier ?? 'free', 'generateIdea', { ideasThisMonth: usage.ideas_this_month });
+  const limit = checkTierLimit(profile?.tier ?? 'free', 'generateIdea', { ideasThisMonth: usage.ideas_this_month }, { adminEmail: profile?.email });
   if (!limit.ok) return NextResponse.json({ error: limit.reason, code: 'tier_limit' }, { status: 402 });
 
   const prompt = buildIdeaPrompt(parsed.data.setupData, parsed.data.count);

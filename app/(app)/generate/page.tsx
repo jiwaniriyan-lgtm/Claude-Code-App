@@ -1,12 +1,12 @@
 import SetupForm from '@/components/SetupForm';
-import { getProfile, getUsageStats } from '@/lib/auth';
+import { effectiveTier, getProfile, getUsageStats } from '@/lib/auth';
 import { PRICING_TIERS } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
 export default async function GeneratePage() {
   const profile = await getProfile();
-  const tier = profile?.tier ?? 'free';
+  const tier = effectiveTier(profile);
   const tierInfo = PRICING_TIERS[tier];
   const usage = profile ? await getUsageStats(profile.id) : null;
 

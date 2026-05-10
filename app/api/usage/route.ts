@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getProfile, getUsageStats } from '@/lib/auth';
+import { effectiveTier, getProfile, getUsageStats } from '@/lib/auth';
 import { PRICING_TIERS } from '@/lib/constants';
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
 
   const profile = await getProfile();
   const usage = await getUsageStats(auth.user.id);
-  const tier = profile?.tier ?? 'free';
+  const tier = effectiveTier(profile);
   const limits = PRICING_TIERS[tier].limits;
 
   return NextResponse.json({
