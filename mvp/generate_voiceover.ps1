@@ -60,7 +60,14 @@ if (-not (Test-Path $scriptPath)) {
 
 # ----- 3. EXTRACT SSML BLOCK FROM MARKDOWN -----
 Write-Host "Extracting SSML script from $ScriptFile..." -ForegroundColor Cyan
-$content = Get-Content -Path $scriptPath -Raw
+# Read bytes directly and decode as UTF-8 — PowerShell 5.1's default is
+# Windows-1252, which would mis-decode em-dashes and smart quotes.
+$rawBytes = [System.IO.File]::ReadAllBytes($scriptPath)
+$content  = [System.Text.Encoding]::UTF8.GetString($rawBytes)
+# Strip BOM if present
+if ($content.Length -gt 0 -and $content[0] -eq [char]0xFEFF) {
+    $content = $content.Substring(1)
+}
 
 # Match the fenced ```ssml ... ``` block
 $match = [regex]::Match($content, '(?s)```ssml\s*(.*?)\s*```')
@@ -90,16 +97,8 @@ $body = @{
     }
 } | ConvertTo-Json -Depth 5
 
-# Force UTF-8 byte encoding — PowerShell 5.1 otherwise sends ISO-8859-1,
-# which corrupts em-dashes / smart quotes in the SSML and returns 400.
 $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($body)
-
 $uri = "https://api.elevenlabs.io/v1/text-to-speech/$VoiceId"
-$headers = @{
-    "xi-api-key"   = $env:ELEVENLABS_API_KEY
-    "Accept"       = "audio/mpeg"
-    "Content-Type" = "application/json; charset=utf-8"
-}
 
 Write-Host "`nCalling ElevenLabs API..." -ForegroundColor Cyan
 Write-Host "  Voice ID:    $VoiceId"
@@ -111,22 +110,40 @@ Write-Host "  Boost:       $useSpeakerBoost"
 Write-Host "  Output:      $outPath"
 Write-Host "  (this can take 30-90 seconds for a 15-min script)" -ForegroundColor Yellow
 
-# ----- 5. SEND REQUEST -----
+# ----- 5. SEND REQUEST via .NET HttpClient -----
+# Invoke-WebRequest in PS 5.1 corrupts non-ASCII bytes even when a byte[]
+# body is passed. Using HttpClient with ByteArrayContent sends the bytes
+# verbatim, which is what ElevenLabs needs to accept UTF-8 SSML.
+Add-Type -AssemblyName System.Net.Http
+$handler = New-Object System.Net.Http.HttpClientHandler
+$client  = New-Object System.Net.Http.HttpClient($handler)
+$client.Timeout = [TimeSpan]::FromSeconds(600)
+$client.DefaultRequestHeaders.Add("xi-api-key", $env:ELEVENLABS_API_KEY)
+$client.DefaultRequestHeaders.Accept.Add(
+    [System.Net.Http.Headers.MediaTypeWithQualityHeaderValue]::new("audio/mpeg"))
+
+$content = New-Object System.Net.Http.ByteArrayContent(,$bodyBytes)
+$content.Headers.ContentType =
+    [System.Net.Http.Headers.MediaTypeHeaderValue]::new("application/json")
+$content.Headers.ContentType.CharSet = "utf-8"
+
 try {
-    Invoke-WebRequest -Uri $uri `
-                      -Method POST `
-                      -Headers $headers `
-                      -Body $bodyBytes `
-                      -OutFile $outPath `
-                      -TimeoutSec 600 `
-                      -ErrorAction Stop | Out-Null
+    $response = $client.PostAsync($uri, $content).GetAwaiter().GetResult()
+    if (-not $response.IsSuccessStatusCode) {
+        $errBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        Write-Host "`nERROR: API call failed." -ForegroundColor Red
+        Write-Host ("Status: {0} {1}" -f [int]$response.StatusCode, $response.StatusCode) -ForegroundColor Red
+        Write-Host $errBody -ForegroundColor Red
+        exit 1
+    }
+    $audio = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+    [System.IO.File]::WriteAllBytes($outPath, $audio)
 } catch {
     Write-Host "`nERROR: API call failed." -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
-    if ($_.ErrorDetails.Message) {
-        Write-Host $_.ErrorDetails.Message -ForegroundColor Red
-    }
     exit 1
+} finally {
+    $client.Dispose()
 }
 
 # ----- 6. DONE -----
