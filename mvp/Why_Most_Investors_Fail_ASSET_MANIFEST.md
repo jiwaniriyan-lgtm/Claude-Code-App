@@ -91,7 +91,7 @@
 | VID-02 | 90% numeral particle reveal | 6s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_060249_c646f213-9c9d-477a-86ed-fb545e36d7a9.mp4 |
 | VID-03 | Office crane shot establishing | 8s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_061111_734d7ad6-63ad-43af-8a21-bcba41c628c3.mp4 |
 | VID-04 | Frustrated investor at desk | 6s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_155544_5e3b5043-1057-4165-9c70-c182ac36bf89.mp4 |
-| VID-05 | Fear vs greed dual portrait | 7s | ⏳ rendering | job `bc4a4920-2e4d-46b5-9a25-47a67891f0e3` |
+| VID-05 | Fear vs greed abstract smoke metaphor | 7s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_160342_3b2cedd2-1b0a-4042-b2f8-5b976877d580.mp4 |
 | VID-06 | Research grind time-lapse | 8s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_061133_17e97a73-6895-4e7c-b541-6f0750021ae8.mp4 |
 | VID-07 | Library books push-in | 7s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_061139_af2a80e0-bb57-464a-977f-a9908f23402f.mp4 |
 | VID-08 | Glass orb storm metaphor | 7s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_155601_bc422f5c-99b1-49b0-ba0e-51dbb616a3d8.mp4 |
@@ -100,7 +100,7 @@
 | VID-11 | Money-tree orchard time-lapse | 8s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_061413_72264f6a-069a-4124-991d-80bd46f47451.mp4 |
 | VID-12 | Host warm subscribe outro | 6s | ✅ | https://d8j0ntlcm91z4.cloudfront.net/user_3Cxar64VflOxcstzDkRmxJwAwsI/hf_20260510_061420_4241a841-9b45-463e-89a1-4fe9b3cacb89.mp4 |
 
-> 11 of 12 rendered (84s total B-roll). VID-05 retry in progress.
+> All 12 clips rendered ✅ (84s total B-roll covering every script segment).
 
 ---
 
