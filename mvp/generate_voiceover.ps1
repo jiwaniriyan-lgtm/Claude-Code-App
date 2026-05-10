@@ -90,11 +90,15 @@ $body = @{
     }
 } | ConvertTo-Json -Depth 5
 
+# Force UTF-8 byte encoding — PowerShell 5.1 otherwise sends ISO-8859-1,
+# which corrupts em-dashes / smart quotes in the SSML and returns 400.
+$bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+
 $uri = "https://api.elevenlabs.io/v1/text-to-speech/$VoiceId"
 $headers = @{
     "xi-api-key"   = $env:ELEVENLABS_API_KEY
     "Accept"       = "audio/mpeg"
-    "Content-Type" = "application/json"
+    "Content-Type" = "application/json; charset=utf-8"
 }
 
 Write-Host "`nCalling ElevenLabs API..." -ForegroundColor Cyan
@@ -112,7 +116,7 @@ try {
     Invoke-WebRequest -Uri $uri `
                       -Method POST `
                       -Headers $headers `
-                      -Body $body `
+                      -Body $bodyBytes `
                       -OutFile $outPath `
                       -TimeoutSec 600 `
                       -ErrorAction Stop | Out-Null
