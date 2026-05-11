@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """
-assemble_video.py  --  split-layout video with pen-style text reveal
-====================================================================
+assemble_video.py  --  bulletproof split-layout build
+=====================================================
 
-For each slide we build a 1920x1080 frame:
+Pillow handles ALL layout/composition (image side + text panel side, fonts,
+colors, padding). ffmpeg only has to turn one static composite PNG into a
+video clip with audio. No time-varying filters, no overlay graphs, no
+drawtext, no drawbox. Works on the most stripped-down ffmpeg build.
+
+For each slide we produce a 1920x1080 frame:
 
     [ AI image 960x1080 ]   [ Text panel 960x1080 ]
-     <letterbox on navy>     <text writes in L->R>
+     <letterboxed on navy>   <title + accent + footer>
 
-The image side alternates between left and right every slide for visual
-variety. The text panel is pre-rendered with Pillow (so we don't need
-ffmpeg's drawtext filter) and then revealed progressively by ffmpeg
-using a time-varying crop -- looks like a hand "writing" the text in.
+Image side alternates left/right per slide for visual variety. Add fancy
+animation later in CapCut -- this is the clean base layer.
 
 Outputs:
-    /Users/sheazad/Downloads/Cintas/_text_panels/panel-NN.png   (per slide)
-    /Users/sheazad/Downloads/Cintas/_clips/clip-NN.mp4          (per slide)
-    /Users/sheazad/Downloads/Cintas/Cintas_Stock_Deep_Dive.mp4  (final)
+    /Users/sheazad/Downloads/Cintas/_frames/frame-NN.png
+    /Users/sheazad/Downloads/Cintas/_clips/clip-NN.mp4
+    /Users/sheazad/Downloads/Cintas/Cintas_Stock_Deep_Dive.mp4
 """
 
 import json
@@ -25,39 +28,32 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
 from slides_data import SLIDES
 
-# ----------------------------------------------------------------------------
-# Paths
-# ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 OUTPUT_ROOT = pathlib.Path("/Users/sheazad/Downloads/Cintas")
 IMAGES_DIR  = OUTPUT_ROOT / "Images"
 VOICE_DIR   = OUTPUT_ROOT / "Voice"
-PANELS_DIR  = OUTPUT_ROOT / "_text_panels"
+FRAMES_DIR  = OUTPUT_ROOT / "_frames"
 CLIPS_DIR   = OUTPUT_ROOT / "_clips"
 FINAL_VIDEO = OUTPUT_ROOT / "Cintas_Stock_Deep_Dive.mp4"
 
-# ----------------------------------------------------------------------------
-# Visual config
-# ----------------------------------------------------------------------------
-W, H              = 1920, 1080      # final canvas
-HALF_W            = 960             # each side
-TAIL_SILENCE_SEC  = 0.6             # gap between slides
-TARGET_TOTAL_SEC  = 16 * 60         # 960s
+W, H              = 1920, 1080
+HALF_W            = 960
+TAIL_SILENCE_SEC  = 0.6
+TARGET_TOTAL_SEC  = 16 * 60
 
-BG_RGB            = (10, 22, 40)    # dark navy
-BG_HEX            = "0x0a1628"      # ffmpeg color form
-TEXT_RGB          = (245, 245, 245)
-ACCENT_RGB        = (212, 175, 55)  # gold
+BG_RGB     = (10, 22, 40)     # dark navy
+TEXT_RGB   = (245, 245, 245)
+ACCENT_RGB = (212, 175, 55)   # gold
 
 
-# ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Helpers
-# ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 def need(binary: str):
     if shutil.which(binary) is None:
         sys.exit(f"ERROR: '{binary}' is not installed. brew install {binary}")
@@ -71,7 +67,7 @@ def probe_duration(mp3_path: pathlib.Path) -> float:
     return float(json.loads(out)["format"]["duration"])
 
 
-def _try_font(path: str, size: int, index: int = 0):
+def _try_font(path, size, index=0):
     if not pathlib.Path(path).exists():
         return None
     try:
@@ -83,39 +79,62 @@ def _try_font(path: str, size: int, index: int = 0):
             return None
 
 
-def get_font(size: int, bold: bool = True):
-    """Find a usable system font on macOS, prefer bold."""
+def get_font(size, bold=True):
     candidates = []
     if bold:
         candidates += [
-            ("/System/Library/Fonts/HelveticaNeue.ttc", 1),    # Bold
+            ("/System/Library/Fonts/HelveticaNeue.ttc", 1),
             ("/System/Library/Fonts/Helvetica.ttc",     1),
             ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
-            ("/Library/Fonts/Arial Bold.ttf",                     0),
         ]
     candidates += [
         ("/System/Library/Fonts/HelveticaNeue.ttc", 0),
         ("/System/Library/Fonts/Helvetica.ttc",     0),
         ("/System/Library/Fonts/Supplemental/Arial.ttf", 0),
-        ("/Library/Fonts/Arial.ttf",                     0),
+        ("/Library/Fonts/Arial.ttf", 0),
     ]
-    for path, idx in candidates:
-        f = _try_font(path, size, idx)
-        if f is not None:
+    for p, i in candidates:
+        f = _try_font(p, size, i)
+        if f:
             return f
     return ImageFont.load_default()
 
 
-def render_text_panel(text: str, out_path: pathlib.Path,
-                      w: int = HALF_W, h: int = H) -> None:
-    """
-    Pre-render the slide's text panel as a PNG.
-    Layout: gold accent bar near top, then large title text, top-left aligned.
-    """
-    img = Image.new("RGB", (w, h), BG_RGB)
+def wrap_to_width(draw, text, font, max_w):
+    words, lines, cur = text.split(), [], ""
+    for word in words:
+        test = (cur + " " + word).strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_w:
+            cur = test
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def letterbox(image: Image.Image, target_w: int, target_h: int,
+              bg_color=BG_RGB) -> Image.Image:
+    iw, ih = image.size
+    scale = min(target_w / iw, target_h / ih)
+    new_w, new_h = max(1, int(iw * scale)), max(1, int(ih * scale))
+    resized = image.resize((new_w, new_h), Image.LANCZOS)
+    canvas = Image.new("RGB", (target_w, target_h), bg_color)
+    canvas.paste(resized, ((target_w - new_w) // 2, (target_h - new_h) // 2))
+    return canvas
+
+
+# ---------------------------------------------------------------------------
+# Text panel (960x1080)
+# ---------------------------------------------------------------------------
+def render_text_panel(text: str, width: int = HALF_W,
+                      height: int = H) -> Image.Image:
+    img = Image.new("RGB", (width, height), BG_RGB)
     draw = ImageDraw.Draw(img)
 
-    # Pick base font size based on text length
     if   len(text) < 25:  size = 96
     elif len(text) < 45:  size = 78
     elif len(text) < 70:  size = 64
@@ -124,102 +143,70 @@ def render_text_panel(text: str, out_path: pathlib.Path,
     title_font   = get_font(size, bold=True)
     caption_font = get_font(28,   bold=False)
 
-    # Word-wrap by pixel width, not char count
     pad_x = 80
-    max_text_w = w - 2 * pad_x
-
-    def wrap_to_width(s, font, max_w):
-        words = s.split()
-        lines, cur = [], ""
-        for word in words:
-            test = (cur + " " + word).strip()
-            bbox = draw.textbbox((0, 0), test, font=font)
-            if bbox[2] - bbox[0] <= max_w:
-                cur = test
-            else:
-                if cur:
-                    lines.append(cur)
-                cur = word
-        if cur:
-            lines.append(cur)
-        return lines
-
-    lines = wrap_to_width(text, title_font, max_text_w)
-
-    # If wrapping produced too many lines, drop the font down once more
+    max_text_w = width - 2 * pad_x
+    lines = wrap_to_width(draw, text, title_font, max_text_w)
     if len(lines) > 5 and size > 52:
         size = 52
         title_font = get_font(size, bold=True)
-        lines = wrap_to_width(text, title_font, max_text_w)
+        lines = wrap_to_width(draw, text, title_font, max_text_w)
 
     line_h = int(size * 1.25)
-    total_text_h = line_h * len(lines)
+    total_h = line_h * len(lines)
     accent_h = 8
-    block_h = total_text_h + 60 + accent_h
-    y0 = (h - block_h) // 2
+    block_h = total_h + 60 + accent_h
+    y0 = (height - block_h) // 2
 
-    # Gold accent bar
+    # gold accent bar
     draw.rectangle([pad_x, y0, pad_x + 120, y0 + accent_h], fill=ACCENT_RGB)
 
-    # Title lines
+    # title lines
     y = y0 + accent_h + 50
     for line in lines:
         draw.text((pad_x, y), line, fill=TEXT_RGB, font=title_font)
         y += line_h
 
-    # Small caption strip at the bottom
-    caption = "Cintas Corporation  •  CTAS"
-    bbox = draw.textbbox((0, 0), caption, font=caption_font)
-    cw = bbox[2] - bbox[0]
-    draw.text((pad_x, h - 80), caption, fill=ACCENT_RGB, font=caption_font)
-
-    img.save(out_path)
+    # footer
+    draw.text((pad_x, height - 80),
+              "Cintas Corporation  •  CTAS",
+              fill=ACCENT_RGB, font=caption_font)
+    return img
 
 
-# ----------------------------------------------------------------------------
-# Per-slide clip builder
-# ----------------------------------------------------------------------------
-def build_slide_clip(idx: int, img_path: pathlib.Path, mp3_path: pathlib.Path,
-                     panel_path: pathlib.Path, out_clip: pathlib.Path) -> None:
+# ---------------------------------------------------------------------------
+# Full 1920x1080 composite
+# ---------------------------------------------------------------------------
+def render_composite(idx: int, ai_image_path: pathlib.Path,
+                     text: str, out_path: pathlib.Path) -> None:
+    canvas = Image.new("RGB", (W, H), BG_RGB)
+    ai_panel  = letterbox(Image.open(ai_image_path).convert("RGB"), HALF_W, H)
+    text_panel = render_text_panel(text, HALF_W, H)
+
+    image_left = (idx % 2 == 1)  # odd: image LEFT, even: image RIGHT
+    if image_left:
+        canvas.paste(ai_panel,   (0,      0))
+        canvas.paste(text_panel, (HALF_W, 0))
+    else:
+        canvas.paste(text_panel, (0,      0))
+        canvas.paste(ai_panel,   (HALF_W, 0))
+
+    canvas.save(out_path, "PNG", optimize=True)
+
+
+# ---------------------------------------------------------------------------
+# Per-slide clip (composite PNG + voice MP3)
+# ---------------------------------------------------------------------------
+def build_slide_clip(idx: int, composite_path: pathlib.Path,
+                     mp3_path: pathlib.Path, out_clip: pathlib.Path) -> None:
     voice_dur = probe_duration(mp3_path)
     clip_dur  = voice_dur + TAIL_SILENCE_SEC
     D = f"{clip_dur:.3f}"
-    # Finish revealing text by ~85% of the voice duration so the viewer
-    # has a moment to read before the next slide.
-    reveal_dur = max(2.0, voice_dur * 0.85)
-    R = f"{reveal_dur:.3f}"
-
-    # Alternate sides: odd idx (1,3,5...) image on LEFT;  even idx image on RIGHT
-    image_left = (idx % 2 == 1)
-    img_x   = 0      if image_left else HALF_W
-    panel_x = HALF_W if image_left else 0
-
-    # ffmpeg filter graph
-    # 1. Image -> scale to 960x1080 with navy letterbox
-    # 2. Panel -> stays FULL SIZE (no variable crop)
-    # 3. Canvas -> solid navy 1920x1080
-    # 4. Overlay image, then overlay full panel
-    # 5. Slide a navy "cover" rectangle off to the right to reveal text L->R
-    filter_complex = (
-        f"[0:v]scale={HALF_W}:{H}:force_original_aspect_ratio=decrease,"
-        f"pad={HALF_W}:{H}:(ow-iw)/2:(oh-ih)/2:color={BG_HEX},setsar=1,format=yuv420p[img];"
-        f"[1:v]setsar=1,format=yuv420p[txt];"
-        f"color=c={BG_HEX}:s={W}x{H}:d={D},format=yuv420p[bg];"
-        f"[bg][img]overlay={img_x}:0[bg2];"
-        f"[bg2][txt]overlay={panel_x}:0[bg3];"
-        f"[bg3]drawbox="
-        f"x='{panel_x}+{HALF_W}*t/{R}':y=0:"
-        f"w='max(0\\,{HALF_W}*(1-t/{R}))':h={H}:"
-        f"color={BG_HEX}@1.0:t=fill[v]"
-    )
 
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-        "-loop", "1", "-t", D, "-i", str(img_path),
-        "-loop", "1", "-t", D, "-i", str(panel_path),
+        "-loop", "1", "-t", D, "-i", str(composite_path),
         "-i", str(mp3_path),
-        "-filter_complex", filter_complex,
-        "-map", "[v]", "-map", "2:a",
+        "-vf", "scale=1920:1080,format=yuv420p,setsar=1",
         "-af", f"apad=pad_dur={TAIL_SILENCE_SEC}",
         "-r", "25",
         "-c:v", "libx264", "-preset", "medium", "-crf", "20",
@@ -238,10 +225,8 @@ def build_slide_clip(idx: int, img_path: pathlib.Path, mp3_path: pathlib.Path,
         raise RuntimeError(f"ffmpeg failed on slide {idx} (exit {result.returncode})")
 
 
-# ----------------------------------------------------------------------------
-# Concat
-# ----------------------------------------------------------------------------
-def concat_clips(clip_paths, out_path: pathlib.Path):
+# ---------------------------------------------------------------------------
+def concat_clips(clip_paths, out_path):
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         for p in clip_paths:
             f.write(f"file '{p}'\n")
@@ -253,54 +238,52 @@ def concat_clips(clip_paths, out_path: pathlib.Path):
     ], check=True)
 
 
-# ----------------------------------------------------------------------------
-# Main
-# ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 def main():
     need("ffmpeg")
     need("ffprobe")
-
     if not IMAGES_DIR.exists() or not VOICE_DIR.exists():
         sys.exit("Run generate_assets.py first.")
 
-    PANELS_DIR.mkdir(parents=True, exist_ok=True)
+    FRAMES_DIR.mkdir(parents=True, exist_ok=True)
     CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # --- Step 1: render text panels with Pillow ---
-    print("Rendering text panels...")
+    # ---- Step 1: render Pillow composites (split-layout PNGs) ------------
+    print("Rendering composite frames (Pillow)...")
     for idx, slide in enumerate(SLIDES, start=1):
+        ai_path = IMAGES_DIR / f"IMG-{idx}.png"
+        if not ai_path.exists():
+            sys.exit(f"Missing AI image: {ai_path}")
         text = slide.get("on_screen_text") or f"Slide {idx}"
-        panel = PANELS_DIR / f"panel-{idx:02d}.png"
-        if not panel.exists():
-            render_text_panel(text, panel)
+        frame = FRAMES_DIR / f"frame-{idx:02d}.png"
+        if not frame.exists():
+            render_composite(idx, ai_path, text, frame)
 
-    # --- Step 2: build each clip ---
+    # ---- Step 2: per-slide clips ----------------------------------------
     clip_paths = []
     total = 0.0
     for idx, slide in enumerate(SLIDES, start=1):
-        img   = IMAGES_DIR / f"IMG-{idx}.png"
         mp3   = VOICE_DIR  / f"Voice-{idx}.mp3"
-        panel = PANELS_DIR / f"panel-{idx:02d}.png"
-        if not img.exists() or not mp3.exists():
-            sys.exit(f"Missing asset for slide {idx}: {img} / {mp3}")
-
+        frame = FRAMES_DIR / f"frame-{idx:02d}.png"
+        if not mp3.exists():
+            sys.exit(f"Missing voice: {mp3}")
         clip = CLIPS_DIR / f"clip-{idx:02d}.mp4"
         print(f"[{idx}/{len(SLIDES)}] building {clip.name} ...")
-        build_slide_clip(idx, img, mp3, panel, clip)
+        build_slide_clip(idx, frame, mp3, clip)
         total += probe_duration(clip)
         clip_paths.append(clip)
 
     print(f"\nTotal runtime before final stitch: {total:.1f}s  (target {TARGET_TOTAL_SEC}s)")
 
-    # --- Step 3: pad to exactly 16 minutes if short ---
+    # ---- Step 3: pad to 16:00 if short ----------------------------------
     if total < TARGET_TOTAL_SEC - 5:
         pad = TARGET_TOTAL_SEC - total
         print(f"Padding final clip with {pad:.1f}s to hit 16:00")
-        last_clip = clip_paths[-1]
+        last = clip_paths[-1]
         padded = CLIPS_DIR / "clip-40-padded.mp4"
         subprocess.run([
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(last_clip),
+            "-i", str(last),
             "-vf", f"tpad=stop_mode=clone:stop_duration={pad}",
             "-af", f"apad=pad_dur={pad}",
             "-c:v", "libx264", "-pix_fmt", "yuv420p",
@@ -309,11 +292,11 @@ def main():
         ], check=True)
         clip_paths[-1] = padded
 
-    # --- Step 4: concat ---
+    # ---- Step 4: concat -------------------------------------------------
     print("Concatenating ...")
     concat_clips(clip_paths, FINAL_VIDEO)
     print(f"\nDONE -> {FINAL_VIDEO}")
-    print(f"(Intermediate clips kept at {CLIPS_DIR} -- delete when happy.)")
+    print(f"(Intermediate clips and frames kept in _clips/ and _frames/ -- delete when happy.)")
 
 
 if __name__ == "__main__":
