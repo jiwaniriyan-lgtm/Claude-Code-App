@@ -71,15 +71,17 @@ def build_slide_clip(img: pathlib.Path, mp3: pathlib.Path,
                      overlay_text: str, out_clip: pathlib.Path) -> None:
     voice_dur = probe_duration(mp3)
     clip_dur  = voice_dur + TAIL_SILENCE_SEC
+    w, h = RESOLUTION.split("x")
 
+    # Simple, robust: scale image to fit 1920x1080 with letterboxing if needed.
+    # No zoompan -- it's flaky on ffmpeg 7.x and CapCut adds Ken-Burns better anyway.
     vf = (
-        f"scale={RESOLUTION}:force_original_aspect_ratio=cover,"
-        f"crop={RESOLUTION},"
-        f"zoompan=z='min(zoom+0.0008,1.08)':d={int(clip_dur*25)}:s={RESOLUTION}"
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,"
+        f"setsar=1,format=yuv420p"
     )
 
     if BURN_TEXT_OVERLAY and overlay_text:
-        # Wrap long lines so they fit nicely
         wrapped = "\n".join(textwrap.wrap(overlay_text, width=60))
         safe = escape_drawtext(wrapped)
         vf += (
@@ -90,20 +92,26 @@ def build_slide_clip(img: pathlib.Path, mp3: pathlib.Path,
         )
 
     cmd = [
-        "ffmpeg", "-y",
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         "-loop", "1", "-t", f"{clip_dur:.3f}", "-i", str(img),
         "-i", str(mp3),
-        "-filter_complex",
-        f"[0:v]{vf}[v];"
-        f"[1:a]apad=pad_dur={TAIL_SILENCE_SEC}[a]",
-        "-map", "[v]", "-map", "[a]",
+        "-vf", vf,
+        "-af", f"apad=pad_dur={TAIL_SILENCE_SEC}",
         "-r", "25",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+        "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-shortest",
         str(out_clip),
     ]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Show ffmpeg's actual error if it fails -- no more silent failures
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.stderr.write("\n--- ffmpeg stderr ---\n")
+        sys.stderr.write(result.stderr)
+        sys.stderr.write("\n--- command ---\n")
+        sys.stderr.write(" ".join(cmd) + "\n")
+        raise RuntimeError(f"ffmpeg failed on {img.name} (exit {result.returncode})")
 
 
 def concat_clips(clip_paths, out_path: pathlib.Path):
