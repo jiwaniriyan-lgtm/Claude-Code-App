@@ -70,32 +70,27 @@ def escape_drawtext(s: str) -> str:
 
 def motion_filter(idx: int, clip_dur: float) -> str:
     """
-    Returns a Ken-Burns motion filter chain (no zoompan).
-    Rotates through 4 motion styles based on slide index for visual variety.
+    Returns a Ken-Burns motion filter chain (no zoompan, no variable-size crop).
+    Output crop dimensions are FIXED at 1920x1080 -- only x/y move with time --
+    which is the most reliable pattern across ffmpeg builds. Four pan styles
+    rotate based on slide index for visual variety.
     """
     D = f"{clip_dur:.3f}"
-    # Pre-scale source to 2400x1350 (25% larger than 1080p, same 16:9 aspect)
+    # Pre-scale source so we have 480px of horizontal and 270px of vertical
+    # headroom to pan across. Output stays a fixed 1920x1080 crop window.
     base = "scale=2400:1350:force_original_aspect_ratio=increase,crop=2400:1350,setsar=1"
     kind = idx % 4
     if kind == 0:
-        # Pan right: camera moves left -> right
-        return f"{base},crop=1920:1080:(iw-1920)*t/{D}:(ih-1080)/2,format=yuv420p"
+        # Pan left -> right, vertically centered
+        return f"{base},crop=1920:1080:480*t/{D}:135,format=yuv420p"
     if kind == 1:
-        # Pan left: camera moves right -> left
-        return f"{base},crop=1920:1080:(iw-1920)*(1-t/{D}):(ih-1080)/2,format=yuv420p"
+        # Pan right -> left, vertically centered
+        return f"{base},crop=1920:1080:480*(1-t/{D}):135,format=yuv420p"
     if kind == 2:
-        # Slow zoom IN (crop window shrinks toward center, scaled back to 1920x1080)
-        return (
-            f"{base},"
-            f"crop=2400-480*t/{D}:1350-270*t/{D}:240*t/{D}:135*t/{D},"
-            f"scale=1920:1080,format=yuv420p"
-        )
-    # kind == 3: Slow zoom OUT (crop window expands from center to full image)
-    return (
-        f"{base},"
-        f"crop=1920+480*t/{D}:1080+270*t/{D}:240*(1-t/{D}):135*(1-t/{D}),"
-        f"scale=1920:1080,format=yuv420p"
-    )
+        # Diagonal: top-left -> bottom-right
+        return f"{base},crop=1920:1080:480*t/{D}:270*t/{D},format=yuv420p"
+    # kind == 3: Diagonal: bottom-right -> top-left
+    return f"{base},crop=1920:1080:480*(1-t/{D}):270*(1-t/{D}),format=yuv420p"
 
 
 def build_slide_clip(img: pathlib.Path, mp3: pathlib.Path,
