@@ -39,8 +39,17 @@ ELEVENLABS_API_KEY  = os.environ.get("ELEVENLABS_API_KEY",  "PASTE_ELEVENLABS_KE
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")  # "George"
 ELEVENLABS_MODEL    = "eleven_multilingual_v2"
 
-# Imagen model. Use the latest you have access to.
-GOOGLE_IMAGEN_MODEL = "imagen-3.0-generate-002"
+# Image-generation models the script will TRY IN ORDER until one works.
+# Gemini native image-gen (nano-banana) usually works on free + paid tiers.
+# Imagen models require billing-enabled projects.
+GOOGLE_IMAGE_MODELS = [
+    "gemini-2.5-flash-image-preview",       # widely available, free tier
+    "gemini-2.0-flash-preview-image-generation",
+    "imagen-4.0-generate-001",
+    "imagen-4.0-fast-generate-001",
+    "imagen-3.0-generate-002",
+    "imagen-3.0-generate-001",
+]
 
 OUTPUT_ROOT  = pathlib.Path("/Users/sheazad/Downloads/Cintas")
 IMAGES_DIR   = OUTPUT_ROOT / "Images"
@@ -59,19 +68,39 @@ def ensure_dirs():
 # -----------------------------------------------------------------------------
 # Image generation  --  Google Imagen via Gemini REST API
 # -----------------------------------------------------------------------------
-def generate_image_via_google(prompt: str, out_path: pathlib.Path) -> None:
-    """
-    Calls Google Imagen via the Gemini REST API.
-    Docs: https://ai.google.dev/gemini-api/docs/imagen
-    """
-    full_prompt = f"{prompt}. {GLOBAL_IMAGE_STYLE}"
+_WORKING_MODEL = {"name": None}  # cached after first success
 
+
+def _try_gemini_generate_content(model: str, prompt: str) -> bytes:
+    """Modern Gemini image generation (gemini-2.x-*-image-*)."""
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{GOOGLE_IMAGEN_MODEL}:predict?key={GOOGLE_API_KEY}"
+        f"{model}:generateContent?key={GOOGLE_API_KEY}"
     )
     payload = {
-        "instances": [{"prompt": full_prompt}],
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
+    }
+    r = requests.post(url, json=payload, timeout=120)
+    if r.status_code != 200:
+        raise RuntimeError(f"{model} HTTP {r.status_code}: {r.text[:300]}")
+    data = r.json()
+    for cand in data.get("candidates", []):
+        for part in cand.get("content", {}).get("parts", []):
+            inline = part.get("inlineData") or part.get("inline_data")
+            if inline and inline.get("data"):
+                return base64.b64decode(inline["data"])
+    raise RuntimeError(f"{model} returned no image: {str(data)[:300]}")
+
+
+def _try_imagen_predict(model: str, prompt: str) -> bytes:
+    """Classic Imagen :predict endpoint."""
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:predict?key={GOOGLE_API_KEY}"
+    )
+    payload = {
+        "instances": [{"prompt": prompt}],
         "parameters": {
             "sampleCount": 1,
             "aspectRatio": "16:9",
@@ -80,15 +109,41 @@ def generate_image_via_google(prompt: str, out_path: pathlib.Path) -> None:
     }
     r = requests.post(url, json=payload, timeout=120)
     if r.status_code != 200:
-        raise RuntimeError(f"Imagen error {r.status_code}: {r.text[:400]}")
-
+        raise RuntimeError(f"{model} HTTP {r.status_code}: {r.text[:300]}")
     data = r.json()
     try:
-        b64 = data["predictions"][0]["bytesBase64Encoded"]
+        return base64.b64decode(data["predictions"][0]["bytesBase64Encoded"])
     except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Imagen response: {data}") from e
+        raise RuntimeError(f"{model} bad response: {str(data)[:300]}") from e
 
-    out_path.write_bytes(base64.b64decode(b64))
+
+def generate_image_via_google(prompt: str, out_path: pathlib.Path) -> None:
+    """
+    Tries each model in GOOGLE_IMAGE_MODELS until one returns an image.
+    Caches the first working model for the rest of the run.
+    """
+    full_prompt = f"{prompt}. {GLOBAL_IMAGE_STYLE}"
+
+    # If we've already found a working model, use it directly
+    candidates = [_WORKING_MODEL["name"]] if _WORKING_MODEL["name"] else GOOGLE_IMAGE_MODELS
+
+    last_err = None
+    for model in candidates:
+        try:
+            if model.startswith("gemini"):
+                img_bytes = _try_gemini_generate_content(model, full_prompt)
+            else:
+                img_bytes = _try_imagen_predict(model, full_prompt)
+            out_path.write_bytes(img_bytes)
+            if _WORKING_MODEL["name"] != model:
+                print(f"          (using model: {model})")
+                _WORKING_MODEL["name"] = model
+            return
+        except Exception as e:
+            last_err = e
+            continue
+
+    raise RuntimeError(f"All image models failed. Last error: {last_err}")
 
 
 # -----------------------------------------------------------------------------
