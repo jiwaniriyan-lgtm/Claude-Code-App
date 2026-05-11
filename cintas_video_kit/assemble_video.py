@@ -40,6 +40,7 @@ FINAL_VIDEO  = OUTPUT_ROOT / "Cintas_Stock_Deep_Dive.mp4"
 TAIL_SILENCE_SEC   = 0.6     # gap between slides
 TARGET_TOTAL_SEC   = 16 * 60 # 960s
 BURN_TEXT_OVERLAY  = False   # text added in CapCut, not burned in
+MOTION_ENABLED     = True    # Ken-Burns motion on every slide (no zoompan)
 FONT_FILE          = "/System/Library/Fonts/Supplemental/Arial.ttf"  # Mac default
 RESOLUTION         = "1920x1080"
 
@@ -67,19 +68,52 @@ def escape_drawtext(s: str) -> str:
     )
 
 
+def motion_filter(idx: int, clip_dur: float) -> str:
+    """
+    Returns a Ken-Burns motion filter chain (no zoompan).
+    Rotates through 4 motion styles based on slide index for visual variety.
+    """
+    D = f"{clip_dur:.3f}"
+    # Pre-scale source to 2400x1350 (25% larger than 1080p, same 16:9 aspect)
+    base = "scale=2400:1350:force_original_aspect_ratio=increase,crop=2400:1350,setsar=1"
+    kind = idx % 4
+    if kind == 0:
+        # Pan right: camera moves left -> right
+        return f"{base},crop=1920:1080:(iw-1920)*t/{D}:(ih-1080)/2,format=yuv420p"
+    if kind == 1:
+        # Pan left: camera moves right -> left
+        return f"{base},crop=1920:1080:(iw-1920)*(1-t/{D}):(ih-1080)/2,format=yuv420p"
+    if kind == 2:
+        # Slow zoom IN (crop window shrinks toward center, scaled back to 1920x1080)
+        return (
+            f"{base},"
+            f"crop=2400-480*t/{D}:1350-270*t/{D}:240*t/{D}:135*t/{D},"
+            f"scale=1920:1080,format=yuv420p"
+        )
+    # kind == 3: Slow zoom OUT (crop window expands from center to full image)
+    return (
+        f"{base},"
+        f"crop=1920+480*t/{D}:1080+270*t/{D}:240*(1-t/{D}):135*(1-t/{D}),"
+        f"scale=1920:1080,format=yuv420p"
+    )
+
+
 def build_slide_clip(img: pathlib.Path, mp3: pathlib.Path,
-                     overlay_text: str, out_clip: pathlib.Path) -> None:
+                     overlay_text: str, out_clip: pathlib.Path,
+                     slide_idx: int = 0) -> None:
     voice_dur = probe_duration(mp3)
     clip_dur  = voice_dur + TAIL_SILENCE_SEC
     w, h = RESOLUTION.split("x")
 
-    # Simple, robust: scale image to fit 1920x1080 with letterboxing if needed.
-    # No zoompan -- it's flaky on ffmpeg 7.x and CapCut adds Ken-Burns better anyway.
-    vf = (
-        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
-        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,"
-        f"setsar=1,format=yuv420p"
-    )
+    if MOTION_ENABLED:
+        vf = motion_filter(slide_idx, clip_dur)
+    else:
+        # Static stills: just scale + letterbox
+        vf = (
+            f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,"
+            f"setsar=1,format=yuv420p"
+        )
 
     if BURN_TEXT_OVERLAY and overlay_text:
         wrapped = "\n".join(textwrap.wrap(overlay_text, width=60))
@@ -147,7 +181,7 @@ def main():
 
         clip = tmp_dir / f"clip-{idx:02d}.mp4"
         print(f"[{idx}/{len(SLIDES)}] building {clip.name} ...")
-        build_slide_clip(img, mp3, slide.get("on_screen_text", ""), clip)
+        build_slide_clip(img, mp3, slide.get("on_screen_text", ""), clip, slide_idx=idx)
         total += probe_duration(clip)
         clip_paths.append(clip)
 
