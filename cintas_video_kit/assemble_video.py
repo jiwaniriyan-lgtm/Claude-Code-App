@@ -196,16 +196,21 @@ def build_slide_clip(idx: int, img_path: pathlib.Path, mp3_path: pathlib.Path,
 
     # ffmpeg filter graph
     # 1. Image -> scale to 960x1080 with navy letterbox
-    # 2. Panel -> crop a growing window starting from x=0 with width = f(t)
+    # 2. Panel -> stays FULL SIZE (no variable crop)
     # 3. Canvas -> solid navy 1920x1080
-    # 4. Overlay image, then overlay revealed panel
+    # 4. Overlay image, then overlay full panel
+    # 5. Slide a navy "cover" rectangle off to the right to reveal text L->R
     filter_complex = (
         f"[0:v]scale={HALF_W}:{H}:force_original_aspect_ratio=decrease,"
-        f"pad={HALF_W}:{H}:(ow-iw)/2:(oh-ih)/2:color={BG_HEX},setsar=1[img];"
-        f"[1:v]crop=w='1+{HALF_W-1}*t/{R}':h={H}:x=0:y=0,setsar=1[txt];"
+        f"pad={HALF_W}:{H}:(ow-iw)/2:(oh-ih)/2:color={BG_HEX},setsar=1,format=yuv420p[img];"
+        f"[1:v]setsar=1,format=yuv420p[txt];"
         f"color=c={BG_HEX}:s={W}x{H}:d={D},format=yuv420p[bg];"
-        f"[bg][img]overlay={img_x}:0:format=auto[bg2];"
-        f"[bg2][txt]overlay={panel_x}:0:format=auto[v]"
+        f"[bg][img]overlay={img_x}:0[bg2];"
+        f"[bg2][txt]overlay={panel_x}:0[bg3];"
+        f"[bg3]drawbox="
+        f"x='{panel_x}+{HALF_W}*t/{R}':y=0:"
+        f"w='max(0\\,{HALF_W}*(1-t/{R}))':h={H}:"
+        f"color={BG_HEX}@1.0:t=fill[v]"
     )
 
     cmd = [
