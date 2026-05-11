@@ -34,21 +34,18 @@ from slides_data import SLIDES, GLOBAL_IMAGE_STYLE
 # -----------------------------------------------------------------------------
 # CONFIG  ---  edit here OR export as env vars before running
 # -----------------------------------------------------------------------------
+# ===== PASTE YOUR FRESH AI STUDIO KEY HERE (or `export GOOGLE_API_KEY=...`) =====
+# Get one at: https://aistudio.google.com/apikey
 GOOGLE_API_KEY      = os.environ.get("GOOGLE_API_KEY",      "PASTE_GOOGLE_KEY_HERE")
 ELEVENLABS_API_KEY  = os.environ.get("ELEVENLABS_API_KEY",  "PASTE_ELEVENLABS_KEY_HERE")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")  # "George"
 ELEVENLABS_MODEL    = "eleven_multilingual_v2"
 
-# Image-generation models the script will TRY IN ORDER until one works.
-# Gemini native image-gen (nano-banana) usually works on free + paid tiers.
-# Imagen models require billing-enabled projects.
+# Google AI Studio "nano-banana" image generation.
+# Tries the GA name first, then the preview name. No Imagen fallback.
 GOOGLE_IMAGE_MODELS = [
-    "gemini-2.5-flash-image-preview",       # widely available, free tier
-    "gemini-2.0-flash-preview-image-generation",
-    "imagen-4.0-generate-001",
-    "imagen-4.0-fast-generate-001",
-    "imagen-3.0-generate-002",
-    "imagen-3.0-generate-001",
+    "gemini-2.5-flash-image",          # GA name
+    "gemini-2.5-flash-image-preview",  # preview name (a.k.a. "nano-banana")
 ]
 
 OUTPUT_ROOT  = pathlib.Path("/Users/sheazad/Downloads/Cintas")
