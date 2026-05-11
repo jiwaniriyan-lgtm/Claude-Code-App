@@ -1,50 +1,63 @@
 #!/usr/bin/env python3
 """
-assemble_video.py
-=================
-Stitches IMG-1..IMG-40 + Voice-1..Voice-40 into a single ~16 minute MP4.
+assemble_video.py  --  split-layout video with pen-style text reveal
+====================================================================
 
-Logic:
-    - For each slide N: take Voice-N.mp3, measure its duration, then create a
-      video clip of IMG-N.png matching that duration + a small tail of silence
-      (default 0.6s) for a natural beat between slides.
-    - Optional: burn the slide's on-screen text in the lower third.
-    - Concatenate all 40 clips.
-    - If total runtime is short of 16:00, pad the final clip; if it overshoots,
-      we keep it (a couple of seconds long/short is fine).
+For each slide we build a 1920x1080 frame:
 
-Output:
-    /Users/sheazad/Downloads/Cintas/Cintas_Stock_Deep_Dive.mp4
+    [ AI image 960x1080 ]   [ Text panel 960x1080 ]
+     <letterbox on navy>     <text writes in L->R>
 
-DEPENDENCIES:
-    pip install -r requirements.txt
-    ffmpeg must be installed on the Mac (brew install ffmpeg).
+The image side alternates between left and right every slide for visual
+variety. The text panel is pre-rendered with Pillow (so we don't need
+ffmpeg's drawtext filter) and then revealed progressively by ffmpeg
+using a time-varying crop -- looks like a hand "writing" the text in.
+
+Outputs:
+    /Users/sheazad/Downloads/Cintas/_text_panels/panel-NN.png   (per slide)
+    /Users/sheazad/Downloads/Cintas/_clips/clip-NN.mp4          (per slide)
+    /Users/sheazad/Downloads/Cintas/Cintas_Stock_Deep_Dive.mp4  (final)
 """
 
 import json
-import math
 import pathlib
 import shutil
 import subprocess
 import sys
-import textwrap
 import tempfile
+import textwrap
+
+from PIL import Image, ImageDraw, ImageFont
 
 from slides_data import SLIDES
 
-OUTPUT_ROOT  = pathlib.Path("/Users/sheazad/Downloads/Cintas")
-IMAGES_DIR   = OUTPUT_ROOT / "Images"
-VOICE_DIR    = OUTPUT_ROOT / "Voice"
-FINAL_VIDEO  = OUTPUT_ROOT / "Cintas_Stock_Deep_Dive.mp4"
+# ----------------------------------------------------------------------------
+# Paths
+# ----------------------------------------------------------------------------
+OUTPUT_ROOT = pathlib.Path("/Users/sheazad/Downloads/Cintas")
+IMAGES_DIR  = OUTPUT_ROOT / "Images"
+VOICE_DIR   = OUTPUT_ROOT / "Voice"
+PANELS_DIR  = OUTPUT_ROOT / "_text_panels"
+CLIPS_DIR   = OUTPUT_ROOT / "_clips"
+FINAL_VIDEO = OUTPUT_ROOT / "Cintas_Stock_Deep_Dive.mp4"
 
-TAIL_SILENCE_SEC   = 0.6     # gap between slides
-TARGET_TOTAL_SEC   = 16 * 60 # 960s
-BURN_TEXT_OVERLAY  = False   # text added in CapCut, not burned in
-MOTION_ENABLED     = True    # Ken-Burns motion on every slide (no zoompan)
-FONT_FILE          = "/System/Library/Fonts/Supplemental/Arial.ttf"  # Mac default
-RESOLUTION         = "1920x1080"
+# ----------------------------------------------------------------------------
+# Visual config
+# ----------------------------------------------------------------------------
+W, H              = 1920, 1080      # final canvas
+HALF_W            = 960             # each side
+TAIL_SILENCE_SEC  = 0.6             # gap between slides
+TARGET_TOTAL_SEC  = 16 * 60         # 960s
+
+BG_RGB            = (10, 22, 40)    # dark navy
+BG_HEX            = "0x0a1628"      # ffmpeg color form
+TEXT_RGB          = (245, 245, 245)
+ACCENT_RGB        = (212, 175, 55)  # gold
 
 
+# ----------------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------------
 def need(binary: str):
     if shutil.which(binary) is None:
         sys.exit(f"ERROR: '{binary}' is not installed. brew install {binary}")
@@ -58,73 +71,150 @@ def probe_duration(mp3_path: pathlib.Path) -> float:
     return float(json.loads(out)["format"]["duration"])
 
 
-def escape_drawtext(s: str) -> str:
-    # ffmpeg drawtext requires special chars escaped
-    return (
-        s.replace("\\", "\\\\")
-         .replace(":", "\\:")
-         .replace("'", "’")  # curly apostrophe sidesteps escape hell
-         .replace("%", "\\%")
-    )
+def _try_font(path: str, size: int, index: int = 0):
+    if not pathlib.Path(path).exists():
+        return None
+    try:
+        return ImageFont.truetype(path, size, index=index)
+    except Exception:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            return None
 
 
-def motion_filter(idx: int, clip_dur: float) -> str:
+def get_font(size: int, bold: bool = True):
+    """Find a usable system font on macOS, prefer bold."""
+    candidates = []
+    if bold:
+        candidates += [
+            ("/System/Library/Fonts/HelveticaNeue.ttc", 1),    # Bold
+            ("/System/Library/Fonts/Helvetica.ttc",     1),
+            ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
+            ("/Library/Fonts/Arial Bold.ttf",                     0),
+        ]
+    candidates += [
+        ("/System/Library/Fonts/HelveticaNeue.ttc", 0),
+        ("/System/Library/Fonts/Helvetica.ttc",     0),
+        ("/System/Library/Fonts/Supplemental/Arial.ttf", 0),
+        ("/Library/Fonts/Arial.ttf",                     0),
+    ]
+    for path, idx in candidates:
+        f = _try_font(path, size, idx)
+        if f is not None:
+            return f
+    return ImageFont.load_default()
+
+
+def render_text_panel(text: str, out_path: pathlib.Path,
+                      w: int = HALF_W, h: int = H) -> None:
     """
-    Returns a Ken-Burns motion filter chain (no zoompan, no variable-size crop).
-    Output crop dimensions are FIXED at 1920x1080 -- only x/y move with time --
-    which is the most reliable pattern across ffmpeg builds. Four pan styles
-    rotate based on slide index for visual variety.
+    Pre-render the slide's text panel as a PNG.
+    Layout: gold accent bar near top, then large title text, top-left aligned.
     """
-    D = f"{clip_dur:.3f}"
-    # Pre-scale source so we have 480px of horizontal and 270px of vertical
-    # headroom to pan across. Output stays a fixed 1920x1080 crop window.
-    base = "scale=2400:1350:force_original_aspect_ratio=increase,crop=2400:1350,setsar=1"
-    kind = idx % 4
-    if kind == 0:
-        # Pan left -> right, vertically centered
-        return f"{base},crop=1920:1080:480*t/{D}:135,format=yuv420p"
-    if kind == 1:
-        # Pan right -> left, vertically centered
-        return f"{base},crop=1920:1080:480*(1-t/{D}):135,format=yuv420p"
-    if kind == 2:
-        # Diagonal: top-left -> bottom-right
-        return f"{base},crop=1920:1080:480*t/{D}:270*t/{D},format=yuv420p"
-    # kind == 3: Diagonal: bottom-right -> top-left
-    return f"{base},crop=1920:1080:480*(1-t/{D}):270*(1-t/{D}),format=yuv420p"
+    img = Image.new("RGB", (w, h), BG_RGB)
+    draw = ImageDraw.Draw(img)
+
+    # Pick base font size based on text length
+    if   len(text) < 25:  size = 96
+    elif len(text) < 45:  size = 78
+    elif len(text) < 70:  size = 64
+    else:                 size = 52
+
+    title_font   = get_font(size, bold=True)
+    caption_font = get_font(28,   bold=False)
+
+    # Word-wrap by pixel width, not char count
+    pad_x = 80
+    max_text_w = w - 2 * pad_x
+
+    def wrap_to_width(s, font, max_w):
+        words = s.split()
+        lines, cur = [], ""
+        for word in words:
+            test = (cur + " " + word).strip()
+            bbox = draw.textbbox((0, 0), test, font=font)
+            if bbox[2] - bbox[0] <= max_w:
+                cur = test
+            else:
+                if cur:
+                    lines.append(cur)
+                cur = word
+        if cur:
+            lines.append(cur)
+        return lines
+
+    lines = wrap_to_width(text, title_font, max_text_w)
+
+    # If wrapping produced too many lines, drop the font down once more
+    if len(lines) > 5 and size > 52:
+        size = 52
+        title_font = get_font(size, bold=True)
+        lines = wrap_to_width(text, title_font, max_text_w)
+
+    line_h = int(size * 1.25)
+    total_text_h = line_h * len(lines)
+    accent_h = 8
+    block_h = total_text_h + 60 + accent_h
+    y0 = (h - block_h) // 2
+
+    # Gold accent bar
+    draw.rectangle([pad_x, y0, pad_x + 120, y0 + accent_h], fill=ACCENT_RGB)
+
+    # Title lines
+    y = y0 + accent_h + 50
+    for line in lines:
+        draw.text((pad_x, y), line, fill=TEXT_RGB, font=title_font)
+        y += line_h
+
+    # Small caption strip at the bottom
+    caption = "Cintas Corporation  •  CTAS"
+    bbox = draw.textbbox((0, 0), caption, font=caption_font)
+    cw = bbox[2] - bbox[0]
+    draw.text((pad_x, h - 80), caption, fill=ACCENT_RGB, font=caption_font)
+
+    img.save(out_path)
 
 
-def build_slide_clip(img: pathlib.Path, mp3: pathlib.Path,
-                     overlay_text: str, out_clip: pathlib.Path,
-                     slide_idx: int = 0) -> None:
-    voice_dur = probe_duration(mp3)
+# ----------------------------------------------------------------------------
+# Per-slide clip builder
+# ----------------------------------------------------------------------------
+def build_slide_clip(idx: int, img_path: pathlib.Path, mp3_path: pathlib.Path,
+                     panel_path: pathlib.Path, out_clip: pathlib.Path) -> None:
+    voice_dur = probe_duration(mp3_path)
     clip_dur  = voice_dur + TAIL_SILENCE_SEC
-    w, h = RESOLUTION.split("x")
+    D = f"{clip_dur:.3f}"
+    # Finish revealing text by ~85% of the voice duration so the viewer
+    # has a moment to read before the next slide.
+    reveal_dur = max(2.0, voice_dur * 0.85)
+    R = f"{reveal_dur:.3f}"
 
-    if MOTION_ENABLED:
-        vf = motion_filter(slide_idx, clip_dur)
-    else:
-        # Static stills: just scale + letterbox
-        vf = (
-            f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
-            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,"
-            f"setsar=1,format=yuv420p"
-        )
+    # Alternate sides: odd idx (1,3,5...) image on LEFT;  even idx image on RIGHT
+    image_left = (idx % 2 == 1)
+    img_x   = 0      if image_left else HALF_W
+    panel_x = HALF_W if image_left else 0
 
-    if BURN_TEXT_OVERLAY and overlay_text:
-        wrapped = "\n".join(textwrap.wrap(overlay_text, width=60))
-        safe = escape_drawtext(wrapped)
-        vf += (
-            f",drawtext=fontfile='{FONT_FILE}':text='{safe}':"
-            f"fontcolor=white:fontsize=42:line_spacing=8:"
-            f"box=1:boxcolor=black@0.55:boxborderw=24:"
-            f"x=(w-text_w)/2:y=h-text_h-90"
-        )
+    # ffmpeg filter graph
+    # 1. Image -> scale to 960x1080 with navy letterbox
+    # 2. Panel -> crop a growing window starting from x=0 with width = f(t)
+    # 3. Canvas -> solid navy 1920x1080
+    # 4. Overlay image, then overlay revealed panel
+    filter_complex = (
+        f"[0:v]scale={HALF_W}:{H}:force_original_aspect_ratio=decrease,"
+        f"pad={HALF_W}:{H}:(ow-iw)/2:(oh-ih)/2:color={BG_HEX},setsar=1[img];"
+        f"[1:v]crop=w='1+{HALF_W-1}*t/{R}':h={H}:x=0:y=0,setsar=1[txt];"
+        f"color=c={BG_HEX}:s={W}x{H}:d={D},format=yuv420p[bg];"
+        f"[bg][img]overlay={img_x}:0:format=auto[bg2];"
+        f"[bg2][txt]overlay={panel_x}:0:format=auto[v]"
+    )
 
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-        "-loop", "1", "-t", f"{clip_dur:.3f}", "-i", str(img),
-        "-i", str(mp3),
-        "-vf", vf,
+        "-loop", "1", "-t", D, "-i", str(img_path),
+        "-loop", "1", "-t", D, "-i", str(panel_path),
+        "-i", str(mp3_path),
+        "-filter_complex", filter_complex,
+        "-map", "[v]", "-map", "2:a",
         "-af", f"apad=pad_dur={TAIL_SILENCE_SEC}",
         "-r", "25",
         "-c:v", "libx264", "-preset", "medium", "-crf", "20",
@@ -133,29 +223,34 @@ def build_slide_clip(img: pathlib.Path, mp3: pathlib.Path,
         "-shortest",
         str(out_clip),
     ]
-    # Show ffmpeg's actual error if it fails -- no more silent failures
+
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         sys.stderr.write("\n--- ffmpeg stderr ---\n")
         sys.stderr.write(result.stderr)
         sys.stderr.write("\n--- command ---\n")
         sys.stderr.write(" ".join(cmd) + "\n")
-        raise RuntimeError(f"ffmpeg failed on {img.name} (exit {result.returncode})")
+        raise RuntimeError(f"ffmpeg failed on slide {idx} (exit {result.returncode})")
 
 
+# ----------------------------------------------------------------------------
+# Concat
+# ----------------------------------------------------------------------------
 def concat_clips(clip_paths, out_path: pathlib.Path):
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         for p in clip_paths:
             f.write(f"file '{p}'\n")
         list_file = f.name
-
-    cmd = [
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file,
+    subprocess.run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-f", "concat", "-safe", "0", "-i", list_file,
         "-c", "copy", str(out_path),
-    ]
-    subprocess.run(cmd, check=True)
+    ], check=True)
 
 
+# ----------------------------------------------------------------------------
+# Main
+# ----------------------------------------------------------------------------
 def main():
     need("ffmpeg")
     need("ffprobe")
@@ -163,44 +258,57 @@ def main():
     if not IMAGES_DIR.exists() or not VOICE_DIR.exists():
         sys.exit("Run generate_assets.py first.")
 
-    tmp_dir = OUTPUT_ROOT / "_clips"
-    tmp_dir.mkdir(exist_ok=True)
+    PANELS_DIR.mkdir(parents=True, exist_ok=True)
+    CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 
+    # --- Step 1: render text panels with Pillow ---
+    print("Rendering text panels...")
+    for idx, slide in enumerate(SLIDES, start=1):
+        text = slide.get("on_screen_text") or f"Slide {idx}"
+        panel = PANELS_DIR / f"panel-{idx:02d}.png"
+        if not panel.exists():
+            render_text_panel(text, panel)
+
+    # --- Step 2: build each clip ---
     clip_paths = []
     total = 0.0
     for idx, slide in enumerate(SLIDES, start=1):
-        img = IMAGES_DIR / f"IMG-{idx}.png"
-        mp3 = VOICE_DIR  / f"Voice-{idx}.mp3"
+        img   = IMAGES_DIR / f"IMG-{idx}.png"
+        mp3   = VOICE_DIR  / f"Voice-{idx}.mp3"
+        panel = PANELS_DIR / f"panel-{idx:02d}.png"
         if not img.exists() or not mp3.exists():
             sys.exit(f"Missing asset for slide {idx}: {img} / {mp3}")
 
-        clip = tmp_dir / f"clip-{idx:02d}.mp4"
+        clip = CLIPS_DIR / f"clip-{idx:02d}.mp4"
         print(f"[{idx}/{len(SLIDES)}] building {clip.name} ...")
-        build_slide_clip(img, mp3, slide.get("on_screen_text", ""), clip, slide_idx=idx)
+        build_slide_clip(idx, img, mp3, panel, clip)
         total += probe_duration(clip)
         clip_paths.append(clip)
 
     print(f"\nTotal runtime before final stitch: {total:.1f}s  (target {TARGET_TOTAL_SEC}s)")
 
+    # --- Step 3: pad to exactly 16 minutes if short ---
     if total < TARGET_TOTAL_SEC - 5:
         pad = TARGET_TOTAL_SEC - total
-        print(f"Padding final clip with {pad:.1f}s of held image to hit 16:00")
+        print(f"Padding final clip with {pad:.1f}s to hit 16:00")
         last_clip = clip_paths[-1]
-        padded = tmp_dir / "clip-40-padded.mp4"
+        padded = CLIPS_DIR / "clip-40-padded.mp4"
         subprocess.run([
-            "ffmpeg", "-y", "-i", str(last_clip),
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            "-i", str(last_clip),
             "-vf", f"tpad=stop_mode=clone:stop_duration={pad}",
             "-af", f"apad=pad_dur={pad}",
             "-c:v", "libx264", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             str(padded),
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], check=True)
         clip_paths[-1] = padded
 
+    # --- Step 4: concat ---
     print("Concatenating ...")
     concat_clips(clip_paths, FINAL_VIDEO)
     print(f"\nDONE -> {FINAL_VIDEO}")
-    print("You can delete the _clips/ folder once you're happy with the result.")
+    print(f"(Intermediate clips kept at {CLIPS_DIR} -- delete when happy.)")
 
 
 if __name__ == "__main__":
