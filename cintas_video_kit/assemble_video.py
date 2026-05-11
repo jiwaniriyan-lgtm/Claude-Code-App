@@ -34,7 +34,22 @@ from PIL import Image, ImageDraw, ImageFont
 from slides_data import SLIDES
 
 # ---------------------------------------------------------------------------
-OUTPUT_ROOT = pathlib.Path("/Users/sheazad/Downloads/Cintas")
+import os, sys
+
+
+def _default_output_root() -> pathlib.Path:
+    """Cross-platform output folder. Override with CINTAS_OUTPUT env var."""
+    env = os.environ.get("CINTAS_OUTPUT")
+    if env:
+        return pathlib.Path(env)
+    if sys.platform.startswith("win"):
+        return pathlib.Path(r"C:\Video Project API\Cintas")
+    if sys.platform == "darwin":
+        return pathlib.Path.home() / "Downloads" / "Cintas"
+    return pathlib.Path.home() / "Cintas"
+
+
+OUTPUT_ROOT = _default_output_root()
 IMAGES_DIR  = OUTPUT_ROOT / "Images"
 VOICE_DIR   = OUTPUT_ROOT / "Voice"
 FRAMES_DIR  = OUTPUT_ROOT / "_frames"
@@ -80,18 +95,37 @@ def _try_font(path, size, index=0):
 
 
 def get_font(size, bold=True):
+    """Find a usable font on Mac, Windows or Linux. Prefers bold if requested."""
     candidates = []
     if bold:
+        # ---- Windows bold ----
+        candidates += [
+            (r"C:\Windows\Fonts\arialbd.ttf",   0),  # Arial Bold
+            (r"C:\Windows\Fonts\segoeuib.ttf",  0),  # Segoe UI Bold
+            (r"C:\Windows\Fonts\calibrib.ttf",  0),  # Calibri Bold
+            (r"C:\Windows\Fonts\verdanab.ttf",  0),  # Verdana Bold
+        ]
+        # ---- macOS bold ----
         candidates += [
             ("/System/Library/Fonts/HelveticaNeue.ttc", 1),
             ("/System/Library/Fonts/Helvetica.ttc",     1),
             ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
         ]
+        # ---- Linux bold ----
+        candidates += [
+            ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 0),
+            ("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 0),
+        ]
+    # ---- Regular weight fallbacks (all platforms) ----
     candidates += [
+        (r"C:\Windows\Fonts\arial.ttf",     0),
+        (r"C:\Windows\Fonts\segoeui.ttf",   0),
+        (r"C:\Windows\Fonts\calibri.ttf",   0),
         ("/System/Library/Fonts/HelveticaNeue.ttc", 0),
         ("/System/Library/Fonts/Helvetica.ttc",     0),
         ("/System/Library/Fonts/Supplemental/Arial.ttf", 0),
         ("/Library/Fonts/Arial.ttf", 0),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 0),
     ]
     for p, i in candidates:
         f = _try_font(p, size, i)

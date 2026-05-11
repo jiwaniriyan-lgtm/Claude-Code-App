@@ -48,7 +48,19 @@ GOOGLE_IMAGE_MODELS = [
     "gemini-2.5-flash-image-preview",  # preview name (a.k.a. "nano-banana")
 ]
 
-OUTPUT_ROOT  = pathlib.Path("/Users/sheazad/Downloads/Cintas")
+def _default_output_root() -> pathlib.Path:
+    """Pick a sensible default output folder per OS, or honor CINTAS_OUTPUT env var."""
+    env = os.environ.get("CINTAS_OUTPUT")
+    if env:
+        return pathlib.Path(env)
+    if sys.platform.startswith("win"):
+        return pathlib.Path(r"C:\Video Project API\Cintas")
+    if sys.platform == "darwin":
+        return pathlib.Path.home() / "Downloads" / "Cintas"
+    return pathlib.Path.home() / "Cintas"
+
+
+OUTPUT_ROOT  = _default_output_root()
 IMAGES_DIR   = OUTPUT_ROOT / "Images"
 VOICE_DIR    = OUTPUT_ROOT / "Voice"
 
