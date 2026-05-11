@@ -39,7 +39,7 @@ FINAL_VIDEO  = OUTPUT_ROOT / "Cintas_Stock_Deep_Dive.mp4"
 
 TAIL_SILENCE_SEC   = 0.6     # gap between slides
 TARGET_TOTAL_SEC   = 16 * 60 # 960s
-BURN_TEXT_OVERLAY  = True    # set False to skip text overlay
+BURN_TEXT_OVERLAY  = False   # text added in CapCut, not burned in
 FONT_FILE          = "/System/Library/Fonts/Supplemental/Arial.ttf"  # Mac default
 RESOLUTION         = "1920x1080"
 
