@@ -28,8 +28,16 @@ import sys
 import time
 import base64
 import pathlib
+import importlib
 import requests
-from slides_data import SLIDES, GLOBAL_IMAGE_STYLE
+
+# Pick which dataset to use via SLIDES_MODULE env var:
+#   export SLIDES_MODULE=slides_data       # Cintas (default)
+#   export SLIDES_MODULE=slides_data_nvda  # NVIDIA
+_slides_module_name = os.environ.get("SLIDES_MODULE", "slides_data")
+_slides_module = importlib.import_module(_slides_module_name)
+SLIDES = _slides_module.SLIDES
+GLOBAL_IMAGE_STYLE = _slides_module.GLOBAL_IMAGE_STYLE
 
 # -----------------------------------------------------------------------------
 # CONFIG  ---  edit here OR export as env vars before running
@@ -53,11 +61,12 @@ def _default_output_root() -> pathlib.Path:
     env = os.environ.get("CINTAS_OUTPUT")
     if env:
         return pathlib.Path(env)
+    project_name = "NVIDIA" if "nvda" in _slides_module_name.lower() else "Cintas"
     if sys.platform.startswith("win"):
-        return pathlib.Path(r"C:\Video Project API\Cintas")
+        return pathlib.Path(rf"C:\Video Project API\{project_name}")
     if sys.platform == "darwin":
-        return pathlib.Path.home() / "Downloads" / "Cintas"
-    return pathlib.Path.home() / "Cintas"
+        return pathlib.Path.home() / "Downloads" / project_name
+    return pathlib.Path.home() / project_name
 
 
 OUTPUT_ROOT  = _default_output_root()

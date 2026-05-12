@@ -22,31 +22,38 @@ Outputs:
     /Users/sheazad/Downloads/Cintas/Cintas_Stock_Deep_Dive.mp4
 """
 
+import os
+import sys
 import json
 import pathlib
 import shutil
 import subprocess
-import sys
 import tempfile
+import importlib
 
 from PIL import Image, ImageDraw, ImageFont
 
-from slides_data import SLIDES
+# Pick which dataset to use via SLIDES_MODULE env var:
+#   set SLIDES_MODULE=slides_data         (Cintas, default)
+#   set SLIDES_MODULE=slides_data_nvda    (NVIDIA)
+_slides_module_name = os.environ.get("SLIDES_MODULE", "slides_data")
+_slides_module = importlib.import_module(_slides_module_name)
+SLIDES = _slides_module.SLIDES
+
 
 # ---------------------------------------------------------------------------
-import os, sys
-
-
 def _default_output_root() -> pathlib.Path:
-    """Cross-platform output folder. Override with CINTAS_OUTPUT env var."""
+    """Cross-platform output folder. Override with CINTAS_OUTPUT env var.
+    If using slides_data_nvda, default to a sibling NVIDIA folder."""
     env = os.environ.get("CINTAS_OUTPUT")
     if env:
         return pathlib.Path(env)
+    project_name = "NVIDIA" if "nvda" in _slides_module_name.lower() else "Cintas"
     if sys.platform.startswith("win"):
-        return pathlib.Path(r"C:\Video Project API\Cintas")
+        return pathlib.Path(rf"C:\Video Project API\{project_name}")
     if sys.platform == "darwin":
-        return pathlib.Path.home() / "Downloads" / "Cintas"
-    return pathlib.Path.home() / "Cintas"
+        return pathlib.Path.home() / "Downloads" / project_name
+    return pathlib.Path.home() / project_name
 
 
 OUTPUT_ROOT = _default_output_root()
