@@ -2,25 +2,128 @@
 
 import { useState } from 'react';
 
-type TabId = 'title' | 'script' | 'voiceover' | 'visuals' | 'thumbnail' | 'soundtrack' | 'video';
+type TabId =
+  | 'research'
+  | 'title'
+  | 'script'
+  | 'voiceover'
+  | 'visuals'
+  | 'thumbnail'
+  | 'soundtrack'
+  | 'description'
+  | 'video';
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: 'research', label: 'Research' },
   { id: 'title', label: 'Title' },
   { id: 'script', label: 'Script' },
   { id: 'voiceover', label: 'Voiceover' },
   { id: 'visuals', label: 'Visuals' },
   { id: 'thumbnail', label: 'Thumbnail' },
   { id: 'soundtrack', label: 'Soundtrack' },
+  { id: 'description', label: 'Description' },
   { id: 'video', label: 'Video' },
 ];
 
-const TITLES = [
-  'The Secret Drone Army Hunting Cartel Bosses',
-  'The Biggest Prison Break You Never Heard Of',
-  "The Hunt for America's Top War Criminal",
+// ─── Research data ────────────────────────────────────────────────────────────
+type Niche = {
+  channel: string;
+  url: string;
+  subscribers: string;
+  monetized: boolean;
+  category: string;
+  format: string;
+  variable: string;
+  topVideos: { title: string; views: string; ctr: string }[];
+  similar: string[];
+  topicIdeas: { topic: string; reason: string }[];
+};
+
+const NICHES: Niche[] = [
+  {
+    channel: '@masterpov',
+    url: 'https://www.youtube.com/@masterpov',
+    subscribers: '9.1K',
+    monetized: true,
+    category: 'Physical Labor Careers',
+    format: 'Every level of <X> career',
+    variable: 'X = physically risky job',
+    topVideos: [
+      { title: 'Every Level of Car Mechanic Career', views: '1.2M', ctr: '11.4%' },
+      { title: 'Every Level of Welder Life', views: '880K', ctr: '9.8%' },
+      { title: 'Every Level of Skyscraper Ironworker', views: '640K', ctr: '12.1%' },
+    ],
+    similar: ['@chillguy', '@bluecollarpov', '@tradesmanlife'],
+    topicIdeas: [
+      { topic: 'Every Level of Cave Diver', reason: 'Underwater + dangerous = retention spike' },
+      { topic: 'Every Level of Free Soloer', reason: 'No-harness climbing — extreme stakes hook' },
+      { topic: 'Every Level of Scuba Diver', reason: 'Depth progression matches "every level" format' },
+      { topic: 'Every Level of Wildfire Firefighter', reason: 'Physical danger + clear career ladder' },
+    ],
+  },
+  {
+    channel: '@fern-tv',
+    url: 'https://www.youtube.com/@fern-tv',
+    subscribers: '2.1M',
+    monetized: true,
+    category: 'Geopolitical Mini-Docs',
+    format: 'The <secret/biggest/hidden> <noun> <action>',
+    variable: 'X = hidden geopolitical story',
+    topVideos: [
+      { title: 'The Secret Drone Army Hunting Cartel Bosses', views: '4.8M', ctr: '14.2%' },
+      { title: 'The Biggest Prison Break You Never Heard Of', views: '3.1M', ctr: '12.6%' },
+      { title: "The Hunt for America's Top War Criminal", views: '2.4M', ctr: '11.9%' },
+    ],
+    similar: ['@JohnnyHarris', '@RealLifeLore', '@KrazaM'],
+    topicIdeas: [
+      { topic: 'The Secret Bank Funding Every Coup', reason: 'Conspiracy hook + financial angle' },
+      { topic: 'The Hidden War Inside the Arctic Circle', reason: 'Geography + escalating tension' },
+      { topic: 'The Spy Ship Nobody Talks About', reason: 'Specific object + secrecy framing' },
+    ],
+  },
+  {
+    channel: '@bizlifepov',
+    url: 'https://www.youtube.com/@bizlifepov',
+    subscribers: '420K',
+    monetized: true,
+    category: 'Career POV (white-collar)',
+    format: 'Your life as a <X>',
+    variable: 'X = high-status profession',
+    topVideos: [
+      { title: 'Your Life as an Electrical Engineer', views: '2.4M', ctr: '13.0%' },
+      { title: 'Your Life as a Software Engineer', views: '1.8M', ctr: '12.4%' },
+      { title: 'Your Life as a Surgeon', views: '1.5M', ctr: '11.7%' },
+    ],
+    similar: ['@careermachine', '@humandecode', '@worklifepov'],
+    topicIdeas: [
+      { topic: 'Your Life as an Air Traffic Controller', reason: 'High stress + clear level progression' },
+      { topic: 'Your Life as a Hedge Fund Quant', reason: 'Status + salary numbers drive CTR' },
+      { topic: 'Your Life as a Patent Lawyer', reason: 'Underexplored white-collar niche' },
+    ],
+  },
 ];
 
-const SCRIPT = `Somewhere high above the Mexican desert, invisible to the naked eye, America's secret drone army is on the hunt.
+// ─── Title / script data ──────────────────────────────────────────────────────
+const TITLES_BY_CHANNEL: Record<string, string[]> = {
+  '@fern-tv': [
+    'The Secret Drone Army Hunting Cartel Bosses',
+    'The Biggest Prison Break You Never Heard Of',
+    "The Hunt for America's Top War Criminal",
+  ],
+  '@masterpov': [
+    'Every Level of Cave Diver Career',
+    'Every Level of Free Soloer Career',
+    'Every Level of Scuba Diver Career',
+  ],
+  '@bizlifepov': [
+    'Your Life as an Electrical Engineer',
+    'Your Life as a Hedge Fund Quant',
+    'Your Life as an Air Traffic Controller',
+  ],
+};
+
+const SCRIPTS: Record<string, string> = {
+  'The Secret Drone Army Hunting Cartel Bosses': `Somewhere high above the Mexican desert, invisible to the naked eye, America's secret drone army is on the hunt.
 
 It's been going on for more than twenty years. The U.S. government runs one of the most sustained covert drone operations ever, watching cartel bosses through mountains and jungles. MQ-9 Reapers—the same drones used in counterterrorism worldwide—circle above drug labs. The CIA and Homeland Security fly them. The Mexican military requests the surveillance. The footage has led to arrests of the world's most wanted.
 
@@ -28,23 +131,46 @@ Joaquín El Chapo Guzmán escaped prison in 2001. For years, nobody found him. T
 
 The drones don't fire missiles here. They watch, listen, and map. Cell signals get intercepted. Convoys get followed for weeks. Patterns emerge. Then a strike team moves in on the ground.
 
-Today, the program is bigger than ever — and almost nobody is supposed to know it exists.`;
+Today, the program is bigger than ever — and almost nobody is supposed to know it exists.`,
+  'Every Level of Cave Diver Career': `Level 1 — The Open Water Diver. You just got your first certification. You can go 18 meters down. The cave entrance looks like a doorway into nothing. You don't go in. Yet.
 
+Level 2 — The Cavern Diver. Within sight of daylight. Always. The rule is simple: if you can't see the exit, you don't belong here.
+
+Level 3 — The Full Cave Diver. Now you go past the light. Three lights, two regulators, a continuous guideline back to open water. One mistake at this depth and nobody is coming to get you.
+
+Level 4 — The Stage Diver. You carry extra tanks. You stage them along the line for the return. You're spending hours underground now.
+
+Level 5 — The CCR Cave Explorer. Closed-circuit rebreathers. No bubbles. You can stay under for eight hours. The caves you visit have never been mapped.
+
+Level 6 — The Mount Everest of Diving. The Sistema Huautla. The Pearse Resurgence. Less than fifty people on Earth are qualified to be here. The water is colder than ice. The decompression is twelve hours. And the people who reach the end of the line — sometimes don't come back.`,
+  'Your Life as an Electrical Engineer': `Level 1 — The Fresh Graduate. You just got your bachelor's degree in electrical engineering. You have a diploma, a soldering iron, and forty-seven job applications open. Forty-six of them won't reply. Starting salary: $72,000.
+
+Level 2 — The Junior Engineer. You're at your first firm. You spend most of your day reading datasheets and asking the senior engineer questions you're afraid are stupid. They aren't.
+
+Level 3 — The Project Engineer. You own a subsystem. PCB layout, firmware, the EMI test that's failing for reasons nobody understands. Salary: $98,000.
+
+Level 4 — The Senior Engineer. You sign off on designs that ship to a million customers. A single decimal in the wrong place is a recall.
+
+Level 5 — The Staff Engineer. You aren't really an engineer anymore. You're a translator between business and physics. Salary: $185,000.
+
+Level 6 — The Principal. There are maybe twelve people on Earth who understand what you do. The company pays you to never leave.`,
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function DemoPage() {
-  const [active, setActive] = useState<TabId>('title');
-  const [selectedTitle, setSelectedTitle] = useState(TITLES[0]);
+  const [active, setActive] = useState<TabId>('research');
+  const [niche, setNiche] = useState<Niche>(NICHES[1]); // Fern as default
+  const [selectedTitle, setSelectedTitle] = useState(TITLES_BY_CHANNEL['@fern-tv'][0]);
 
   const goto = (id: TabId) => setActive(id);
-  const nextOf = (id: TabId): TabId => {
-    const i = TABS.findIndex((t) => t.id === id);
-    return TABS[Math.min(i + 1, TABS.length - 1)].id;
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-extrabold mb-1">Instant Video Studio</h1>
-        <p className="text-slate-500 mb-6">Every step generates instantly — no waiting.</p>
+        <p className="text-slate-500 mb-6">
+          Niche research, style copy, and every production step — all generated instantly.
+        </p>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="flex flex-wrap gap-1 px-4 pt-4 pb-4 bg-slate-50 border-b border-slate-200">
@@ -64,22 +190,48 @@ export default function DemoPage() {
           </div>
 
           <div className="p-8">
+            {active === 'research' && (
+              <ResearchStep
+                niches={NICHES}
+                selected={niche}
+                onSelect={(n) => {
+                  setNiche(n);
+                  setSelectedTitle(TITLES_BY_CHANNEL[n.channel]?.[0] ?? '');
+                }}
+                onContinue={() => goto('title')}
+              />
+            )}
             {active === 'title' && (
               <TitleStep
-                titles={TITLES}
+                niche={niche}
+                titles={TITLES_BY_CHANNEL[niche.channel] ?? []}
                 selected={selectedTitle}
                 onSelect={setSelectedTitle}
                 onContinue={() => goto('script')}
               />
             )}
             {active === 'script' && (
-              <ScriptStep title={selectedTitle} onContinue={() => goto(nextOf('script'))} />
+              <ScriptStep title={selectedTitle} onContinue={() => goto('voiceover')} />
             )}
-            {active === 'voiceover' && <VoiceoverStep onContinue={() => goto(nextOf('voiceover'))} />}
-            {active === 'visuals' && <VisualsStep onContinue={() => goto(nextOf('visuals'))} />}
-            {active === 'thumbnail' && <ThumbnailStep onContinue={() => goto(nextOf('thumbnail'))} />}
-            {active === 'soundtrack' && <SoundtrackStep onContinue={() => goto('video')} />}
-            {active === 'video' && <VideoStep onRestart={() => { setActive('title'); setSelectedTitle(TITLES[0]); }} />}
+            {active === 'voiceover' && <VoiceoverStep onContinue={() => goto('visuals')} />}
+            {active === 'visuals' && <VisualsStep onContinue={() => goto('thumbnail')} />}
+            {active === 'thumbnail' && (
+              <ThumbnailStep title={selectedTitle} onContinue={() => goto('soundtrack')} />
+            )}
+            {active === 'soundtrack' && <SoundtrackStep onContinue={() => goto('description')} />}
+            {active === 'description' && (
+              <DescriptionStep title={selectedTitle} onContinue={() => goto('video')} />
+            )}
+            {active === 'video' && (
+              <VideoStep
+                title={selectedTitle}
+                onRestart={() => {
+                  setActive('research');
+                  setNiche(NICHES[1]);
+                  setSelectedTitle(TITLES_BY_CHANNEL['@fern-tv'][0]);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -87,6 +239,7 @@ export default function DemoPage() {
   );
 }
 
+// ─── Shared bits ──────────────────────────────────────────────────────────────
 function StepHeader({
   icon,
   title,
@@ -123,39 +276,200 @@ function StepHeader({
   );
 }
 
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+      {children}
+    </span>
+  );
+}
+
+// ─── Research ─────────────────────────────────────────────────────────────────
+function ResearchStep({
+  niches,
+  selected,
+  onSelect,
+  onContinue,
+}: {
+  niches: Niche[];
+  selected: Niche;
+  onSelect: (n: Niche) => void;
+  onContinue: () => void;
+}) {
+  const [url, setUrl] = useState(selected.url);
+  const [analyzed, setAnalyzed] = useState(true);
+
+  const analyze = () => {
+    const match = niches.find((n) => url.includes(n.channel.replace('@', '')));
+    if (match) onSelect(match);
+    setAnalyzed(true);
+  };
+
+  return (
+    <div>
+      <StepHeader
+        icon={<SearchIcon />}
+        title="Niche Finder"
+        subtitle="Paste a competitor channel — we'll identify the format, find similar channels, and suggest topics in your style."
+        cta="Continue to Title"
+        onCta={onContinue}
+      />
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Badge>1</Badge>
+          <h3 className="font-bold text-lg">Analyze a Channel</h3>
+        </div>
+        <div className="flex flex-col md:flex-row gap-3 mb-4">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.youtube.com/@channel"
+            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={analyze}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl px-6 py-3"
+          >
+            Analyze
+          </button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {niches.map((n) => (
+            <button
+              key={n.channel}
+              onClick={() => {
+                onSelect(n);
+                setUrl(n.url);
+                setAnalyzed(true);
+              }}
+              className={`p-3 rounded-xl border text-left text-sm transition ${
+                selected.channel === n.channel
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <p className="font-semibold">{n.channel}</p>
+              <p className="text-slate-500 text-xs">{n.subscribers} subs</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {analyzed && (
+        <>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Badge>2</Badge>
+              <h3 className="font-bold text-lg">Channel Analysis</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+              <Stat label="Channel" value={selected.channel} />
+              <Stat label="Subscribers" value={selected.subscribers} />
+              <Stat
+                label="Monetized"
+                value={selected.monetized ? '✓ Yes' : '✗ No'}
+                color={selected.monetized ? 'text-green-600' : 'text-slate-500'}
+              />
+              <Stat label="Category" value={selected.category} />
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+              <p className="text-sm text-slate-500 mb-1">Detected format pattern</p>
+              <p className="font-mono text-blue-700 font-semibold">{selected.format}</p>
+              <p className="text-sm text-slate-500 mt-2">
+                Repeating variable: <span className="font-semibold text-slate-700">{selected.variable}</span>
+              </p>
+            </div>
+            <p className="text-sm text-slate-500 mb-2">Top performing videos (sorted by popular)</p>
+            <div className="space-y-2">
+              {selected.topVideos.map((v) => (
+                <div key={v.title} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                  <span className="font-semibold text-sm truncate">{v.title}</span>
+                  <span className="text-xs text-slate-500 shrink-0">
+                    {v.views} views • CTR {v.ctr}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Badge>3</Badge>
+              <h3 className="font-bold text-lg">Similar Channels</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selected.similar.map((s) => (
+                <span key={s} className="bg-white border border-slate-200 rounded-full px-4 py-2 text-sm font-semibold">
+                  {s}
+                </span>
+              ))}
+            </div>
+            <p className="text-sm text-slate-500 mt-3">
+              Low-to-medium competition detected — this niche is viable for a new entrant.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Badge>4</Badge>
+              <h3 className="font-bold text-lg">Suggested Topic Ideas (in your style)</h3>
+            </div>
+            <div className="space-y-3">
+              {selected.topicIdeas.map((t) => (
+                <div key={t.topic} className="bg-white border border-slate-200 rounded-xl p-4">
+                  <p className="font-semibold">{t.topic}</p>
+                  <p className="text-sm text-slate-500">{t.reason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3">
+      <p className="text-xs text-slate-500 mb-1">{label}</p>
+      <p className={`font-bold ${color ?? 'text-slate-900'}`}>{value}</p>
+    </div>
+  );
+}
+
+// ─── Title ────────────────────────────────────────────────────────────────────
 function TitleStep({
+  niche,
   titles,
   selected,
   onSelect,
   onContinue,
 }: {
+  niche: Niche;
   titles: string[];
   selected: string;
   onSelect: (t: string) => void;
   onContinue: () => void;
 }) {
-  const [url, setUrl] = useState('https://www.youtube.com/@fern-tv');
+  const [custom, setCustom] = useState('');
   return (
     <div>
       <StepHeader
         icon={<YouTubeIcon />}
-        title="Generate from YouTube Channel"
-        subtitle="Analyze a YouTube channel and generate titles in their style"
+        title="Generate from Channel Style"
+        subtitle={`Style copied from ${niche.channel} — format: ${niche.format}`}
+        cta="Continue to Script"
+        onCta={onContinue}
       />
-      <div className="flex flex-col md:flex-row gap-3 mb-6">
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-500"
-        />
-        <button
-          onClick={onContinue}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl px-6 py-3 inline-flex items-center justify-center gap-2"
-        >
-          Continue to Script <span aria-hidden>→</span>
-        </button>
+
+      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-900">
+        ✨ Generated instantly from <strong>{niche.channel}</strong>'s top videos.
       </div>
-      <div className="space-y-3">
+
+      <p className="font-semibold mb-2">Generated titles</p>
+      <div className="space-y-3 mb-6">
         {titles.map((t) => {
           const isSel = t === selected;
           return (
@@ -173,42 +487,89 @@ function TitleStep({
           );
         })}
       </div>
-    </div>
-  );
-}
 
-function ScriptStep({ title, onContinue }: { title: string; onContinue: () => void }) {
-  return (
-    <div>
-      <StepHeader
-        icon={<DocIcon />}
-        title="Script Generator"
-        subtitle="Generate engaging video scripts optimized for viewer retention"
-        cta="Continue to Voiceover"
-        onCta={onContinue}
-      />
-      <div className="border border-slate-200 rounded-xl px-5 py-4 mb-2 font-semibold">{title}</div>
-      <p className="text-slate-400 text-sm mb-4">Your selected title</p>
-      <div className="border border-slate-200 rounded-xl p-6 bg-slate-50 whitespace-pre-wrap leading-relaxed text-slate-700 max-h-[420px] overflow-y-auto">
-        {SCRIPT}
+      <p className="font-semibold mb-2">Or write your own</p>
+      <div className="flex gap-3">
+        <input
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          placeholder="Type a custom title..."
+          className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white"
+        />
+        <button
+          onClick={() => custom && onSelect(custom)}
+          className="bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl px-5"
+        >
+          Use this title
+        </button>
       </div>
     </div>
   );
 }
 
+// ─── Script ───────────────────────────────────────────────────────────────────
+function ScriptStep({ title, onContinue }: { title: string; onContinue: () => void }) {
+  const [webSearch, setWebSearch] = useState(true);
+  const script = SCRIPTS[title] ?? SCRIPTS['The Secret Drone Army Hunting Cartel Bosses'];
+  return (
+    <div>
+      <StepHeader
+        icon={<DocIcon />}
+        title="Script Generator"
+        subtitle="Engaging scripts optimized for viewer retention"
+        cta="Continue to Voiceover"
+        onCta={onContinue}
+      />
+      <div className="border border-slate-200 rounded-xl px-5 py-4 mb-2 font-semibold">{title}</div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-slate-400 text-sm">Your selected title</p>
+        <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={webSearch}
+            onChange={(e) => setWebSearch(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="font-semibold text-slate-700">Web search</span>
+          <span className="text-slate-400">(more accurate facts)</span>
+        </label>
+      </div>
+      <div className="border border-slate-200 rounded-xl p-6 bg-slate-50 whitespace-pre-wrap leading-relaxed text-slate-700 max-h-[420px] overflow-y-auto">
+        {script}
+      </div>
+    </div>
+  );
+}
+
+// ─── Voiceover ────────────────────────────────────────────────────────────────
 function VoiceoverStep({ onContinue }: { onContinue: () => void }) {
+  const voices = ['Adam (Narrator)', 'Sarah (Documentary)', 'Liam (Energetic)', 'Mia (Calm)'];
+  const [voice, setVoice] = useState(voices[0]);
   return (
     <div>
       <StepHeader
         icon={<MicIcon />}
         title="Voiceover Generator"
-        subtitle="Generate professional AI voiceovers from your script"
+        subtitle="Professional AI voiceovers from your script"
         cta="Continue to Visuals"
         onCta={onContinue}
       />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {voices.map((v) => (
+          <button
+            key={v}
+            onClick={() => setVoice(v)}
+            className={`p-3 rounded-xl border text-sm font-semibold text-left ${
+              voice === v ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600'
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
       <p className="text-slate-500 mb-2">Script Preview</p>
       <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 mb-2 text-slate-700">
-        Somewhere high above the Mexican desert, invisible to the naked eye, America's secret drone army is on the hunt...
+        Level 1 — The fresh graduate. You just got your degree...
       </div>
       <p className="text-slate-500 text-sm mb-8">296 words • Estimated duration: ~2 min</p>
 
@@ -218,35 +579,45 @@ function VoiceoverStep({ onContinue }: { onContinue: () => void }) {
   );
 }
 
+// ─── Visuals ──────────────────────────────────────────────────────────────────
 function VisualsStep({ onContinue }: { onContinue: () => void }) {
   const [animate, setAnimate] = useState(true);
-  const [style, setStyle] = useState<string | null>('Cinematic');
-  const styles = ['Cinematic', 'Documentary', 'Anime', 'Photo-real', '3D Render', 'Vintage'];
+  const [style, setStyle] = useState<string>('2D Art');
+  const [autoHeaders, setAutoHeaders] = useState(true);
+  const [autoCharts, setAutoCharts] = useState(true);
+  const styles = ['Cinematic', '2D Art', 'Documentary', 'Photo-real', '3D Render', 'Anime'];
+  const models = ['Nano Banana 1K', 'Flux Schnell', 'SDXL Lightning'];
+  const [model, setModel] = useState(models[0]);
 
   return (
     <div>
       <StepHeader
         icon={<FilmIcon />}
         title="Visual Generator"
-        subtitle="Generate stunning AI images for each scene of your video"
+        subtitle="AI images for each scene — with smart overlays"
         cta="Continue to Thumbnail"
         onCta={onContinue}
       />
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
-        <Field label="1. Select aspect ratio">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
+        <Field label="1. Aspect ratio">
           <select className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white">
             <option>16:9</option>
             <option>9:16</option>
             <option>1:1</option>
           </select>
         </Field>
-        <Field label="2. Select quality">
-          <select className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white">
-            <option>Best (90 credits)</option>
-            <option>Standard (45 credits)</option>
+        <Field label="2. Image model">
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white"
+          >
+            {models.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
           </select>
         </Field>
-        <Field label="3. Animate images?">
+        <Field label="3. Animate?">
           <button
             onClick={() => setAnimate((v) => !v)}
             className={`w-full px-4 py-3 rounded-xl border font-semibold ${
@@ -256,18 +627,18 @@ function VisualsStep({ onContinue }: { onContinue: () => void }) {
             {animate ? '✓ Animate' : 'Static'}
           </button>
         </Field>
-        <Field label="4. Set image count">
+        <Field label="4. Image count">
           <input
             defaultValue={30}
             disabled={animate}
             className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white"
           />
-          {animate && <p className="text-slate-400 text-xs mt-2">Images locked to 30 for animation</p>}
+          {animate && <p className="text-slate-400 text-xs mt-2">Locked to 30 for animation</p>}
         </Field>
       </div>
 
       <h3 className="font-bold mb-3">5. Choose style</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         {styles.map((s) => (
           <button
             key={s}
@@ -280,69 +651,163 @@ function VisualsStep({ onContinue }: { onContinue: () => void }) {
           </button>
         ))}
       </div>
+
+      <h3 className="font-bold mb-3">6. Smart overlays</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+        <Toggle
+          label="Auto headers"
+          desc='Detects level/section headers (e.g. "Level 1") and adds animated titles'
+          on={autoHeaders}
+          onChange={setAutoHeaders}
+        />
+        <Toggle
+          label="Auto charts"
+          desc="Detects stats/numbers in the script and renders charts automatically"
+          on={autoCharts}
+          onChange={setAutoCharts}
+        />
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <p className="font-bold mb-3">Preview (auto-generated scenes)</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { kind: 'header', label: 'LEVEL 1' },
+            { kind: 'image', label: 'Fresh Graduate' },
+            { kind: 'chart', label: '47 applied / 1 reply' },
+            { kind: 'image', label: 'First office' },
+            { kind: 'header', label: 'LEVEL 2' },
+            { kind: 'image', label: 'Junior engineer' },
+            { kind: 'chart', label: 'Salary: $72K → $98K' },
+            { kind: 'image', label: 'Senior at whiteboard' },
+          ].map((p, i) => (
+            <ScenePreview key={i} kind={p.kind as any} label={p.label} enabled={p.kind === 'image' || (p.kind === 'header' ? autoHeaders : autoCharts)} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function ThumbnailStep({ onContinue }: { onContinue: () => void }) {
-  const [generated, setGenerated] = useState(false);
+function Toggle({
+  label,
+  desc,
+  on,
+  onChange,
+}: {
+  label: string;
+  desc: string;
+  on: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      className={`p-4 rounded-xl border text-left ${
+        on ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-bold">{label}</span>
+        <span className={`w-10 h-6 rounded-full ${on ? 'bg-blue-600' : 'bg-slate-300'} relative transition`}>
+          <span
+            className={`absolute top-0.5 ${on ? 'right-0.5' : 'left-0.5'} w-5 h-5 bg-white rounded-full shadow`}
+          />
+        </span>
+      </div>
+      <p className="text-xs text-slate-500">{desc}</p>
+    </button>
+  );
+}
+
+function ScenePreview({ kind, label, enabled }: { kind: 'header' | 'image' | 'chart'; label: string; enabled: boolean }) {
+  if (!enabled && kind !== 'image') {
+    return (
+      <div className="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs">
+        {kind} disabled
+      </div>
+    );
+  }
+  if (kind === 'header') {
+    return (
+      <div className="aspect-video rounded-xl bg-slate-900 flex items-center justify-center text-white font-extrabold tracking-wider">
+        {label}
+      </div>
+    );
+  }
+  if (kind === 'chart') {
+    return (
+      <div className="aspect-video rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-3 flex flex-col justify-end">
+        <p className="text-xs font-semibold text-blue-900 mb-2">{label}</p>
+        <div className="flex items-end gap-1 h-12">
+          <div className="flex-1 bg-blue-600 rounded-sm" style={{ height: '30%' }} />
+          <div className="flex-1 bg-blue-600 rounded-sm" style={{ height: '55%' }} />
+          <div className="flex-1 bg-blue-600 rounded-sm" style={{ height: '80%' }} />
+          <div className="flex-1 bg-blue-600 rounded-sm" style={{ height: '100%' }} />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="aspect-video rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-600 text-xs font-semibold text-center px-2">
+      {label}
+    </div>
+  );
+}
+
+// ─── Thumbnail ────────────────────────────────────────────────────────────────
+function ThumbnailStep({ title, onContinue }: { title: string; onContinue: () => void }) {
+  const [text, setText] = useState('CHANGE NEVER WORKS');
   return (
     <div>
       <StepHeader
         icon={<ImageIcon />}
         title="Thumbnail Generator"
-        subtitle="Create an eye-catching thumbnail for your video"
+        subtitle="Eye-catching thumbnails — manual or auto"
+        cta="Continue to Soundtrack"
+        onCta={onContinue}
       />
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <Badge>1</Badge>
-          <h3 className="font-bold text-lg">Select Reference Image</h3>
-        </div>
-        <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 mb-4">
-          <span className="text-slate-400">🔗</span>
-          <span className="flex-1 text-slate-500 text-sm truncate">https://www.youtube.com/watch?v=m_4zaXSLW...</span>
-          <span className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">✓</span>
+          <h3 className="font-bold text-lg">Reference Image</h3>
         </div>
         <div className="rounded-xl bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800 aspect-video flex items-center justify-center text-white relative overflow-hidden">
-          <div className="absolute top-6 left-8 bg-red-600 px-4 py-2 font-extrabold tracking-wider">DANGER</div>
+          <div className="absolute top-6 left-8 bg-red-600 px-4 py-2 font-extrabold tracking-wider">UNAWARE</div>
           <div className="text-6xl">🛰️</div>
+          <div className="absolute bottom-6 right-8 text-3xl font-extrabold tracking-wide text-right max-w-[60%] leading-tight">
+            {text}
+          </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
         <div className="flex items-center gap-3 mb-4">
           <Badge>2</Badge>
-          <h3 className="font-bold text-lg">Edit Description</h3>
+          <h3 className="font-bold text-lg">Manual Mode — edit text</h3>
         </div>
-        <textarea
-          rows={3}
-          defaultValue={'Create a shadowy desert landscape, and on the right side a Cartel Boss highlighted in blue. The Cartel Boss has a red tag above that says "UNAWARE". Above him, a large military-style drone flies over.'}
-          className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white mb-4"
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white mb-4 font-semibold"
         />
-        <div className="flex justify-end">
-          <button
-            onClick={() => {
-              setGenerated(true);
-              setTimeout(onContinue, 200);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl px-5 py-3"
-          >
-            ✨ {generated ? 'Generated!' : 'Generate Thumbnail'}
-          </button>
-        </div>
+        <p className="text-sm text-slate-500">Title context: <strong>{title}</strong></p>
       </div>
     </div>
   );
 }
 
+// ─── Soundtrack ───────────────────────────────────────────────────────────────
 function SoundtrackStep({ onContinue }: { onContinue: () => void }) {
   return (
     <div>
       <StepHeader
         icon={<MusicIcon />}
         title="Soundtrack Generator"
-        subtitle="Generate AI-powered background music for your video"
+        subtitle="AI background music matched to your voiceover mood"
+        cta="Continue to Description"
+        onCta={onContinue}
       />
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 mb-6">
@@ -351,20 +816,21 @@ function SoundtrackStep({ onContinue }: { onContinue: () => void }) {
           <h3 className="font-bold text-lg">Audio Source</h3>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-start gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><MusicIcon /></div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <MusicIcon />
+          </div>
           <div className="flex-1">
             <p className="font-semibold">Generated Voiceover</p>
-            <p className="text-sm text-slate-500">Duration: 2:13 • Your voiceover is ready for soundtrack generation</p>
+            <p className="text-sm text-slate-500">Duration: 2:13 • Ready for soundtrack generation</p>
           </div>
           <span className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">✓</span>
         </div>
-        <p className="text-sm text-slate-500">Your generated voiceover is pre-loaded. The AI will create background music that complements your narration.</p>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <Badge>2</Badge>
-          <h3 className="font-bold text-lg">Audio Segments</h3>
+          <h3 className="font-bold text-lg">Audio Segments (auto mood-matched)</h3>
         </div>
         <Segment n={1} time="0:00 — 0:42 (42s)" desc="Soft, mysterious ambient music building anticipation, subtle electronic undertones" />
         <Segment n={2} time="0:42 — 1:38 (56s)" desc="Energetic, inspiring corporate music with driving rhythm and uplifting synths" />
@@ -374,67 +840,20 @@ function SoundtrackStep({ onContinue }: { onContinue: () => void }) {
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
         <div className="flex items-center gap-3 mb-4">
           <Badge>3</Badge>
-          <h3 className="font-bold text-lg">Generate & Download Soundtrack</h3>
+          <h3 className="font-bold text-lg">Generated Soundtrack</h3>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-3 mb-3">
             <span className="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">✓</span>
             <div>
               <p className="font-bold">Soundtrack Generated!</p>
-              <p className="text-sm text-slate-500">Your AI-powered background music is ready</p>
+              <p className="text-sm text-slate-500">Length matches your voiceover</p>
             </div>
           </div>
           <FakeAudioPlayer duration="2:13" />
         </div>
-        <button
-          onClick={onContinue}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl py-4 inline-flex items-center justify-center gap-2"
-        >
-          View Final Video <span aria-hidden>→</span>
-        </button>
       </div>
     </div>
-  );
-}
-
-function VideoStep({ onRestart }: { onRestart: () => void }) {
-  return (
-    <div className="text-center">
-      <h2 className="text-3xl font-extrabold mb-2">Your Video is Ready!</h2>
-      <p className="text-slate-500 mb-6">Here's a preview of what your AI-generated video would look like</p>
-      <div className="rounded-2xl overflow-hidden bg-slate-900 aspect-video flex items-center justify-center text-white mb-6 relative">
-        <div className="text-6xl">▶</div>
-        <div className="absolute bottom-3 left-4 text-sm bg-black/60 px-2 py-1 rounded">0:36 / 2:13</div>
-      </div>
-      <div className="flex justify-center gap-3">
-        <button
-          onClick={onRestart}
-          className="px-5 py-3 rounded-xl border border-slate-200 bg-white font-semibold inline-flex items-center gap-2 hover:bg-slate-50"
-        >
-          ↻ Restart Demo
-        </button>
-        <button className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold inline-flex items-center gap-2">
-          Start Creating <span aria-hidden>→</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="font-bold mb-2">{label}</p>
-      {children}
-    </div>
-  );
-}
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
-      {children}
-    </span>
   );
 }
 
@@ -446,6 +865,89 @@ function Segment({ n, time, desc }: { n: number; time: string; desc: string }) {
         <span className="font-mono text-sm text-slate-600">{time}</span>
       </div>
       <p className="text-slate-500 text-sm">{desc}</p>
+    </div>
+  );
+}
+
+// ─── Description ──────────────────────────────────────────────────────────────
+function DescriptionStep({ title, onContinue }: { title: string; onContinue: () => void }) {
+  const timestamps = [
+    { t: '0:00', label: 'Intro — The Hook' },
+    { t: '0:18', label: 'Level 1 — The Fresh Graduate' },
+    { t: '0:42', label: 'Level 2 — The Junior' },
+    { t: '1:08', label: 'Level 3 — The Project Lead' },
+    { t: '1:38', label: 'Level 4 — The Senior' },
+    { t: '1:55', label: 'Level 5 — The Staff Engineer' },
+    { t: '2:05', label: 'Level 6 — The Principal' },
+  ];
+  const hashtags = ['#career', '#engineering', '#salary', '#worklife', '#pov'];
+  return (
+    <div>
+      <StepHeader
+        icon={<TextIcon />}
+        title="Description Generator"
+        subtitle="SEO-optimized description with auto timestamps and hashtags"
+        cta="Continue to Video"
+        onCta={onContinue}
+      />
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-4">
+        <p className="text-slate-700 mb-4">
+          In this video we break down <strong>{title}</strong> — every stage of the career, what
+          the salary actually looks like, and the moments that decide who makes it to the top. Watch
+          to the end for the level almost no one reaches.
+        </p>
+        <p className="font-semibold mb-2">⏱ Timestamps</p>
+        <div className="space-y-1 mb-4">
+          {timestamps.map((t) => (
+            <p key={t.t} className="text-sm text-slate-600 font-mono">
+              <span className="text-blue-600">{t.t}</span> &nbsp; {t.label}
+            </p>
+          ))}
+        </div>
+        <p className="font-semibold mb-2">🔖 Tags</p>
+        <div className="flex flex-wrap gap-2">
+          {hashtags.map((h) => (
+            <span key={h} className="bg-white border border-slate-200 rounded-full px-3 py-1 text-sm text-slate-700">
+              {h}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Video ────────────────────────────────────────────────────────────────────
+function VideoStep({ title, onRestart }: { title: string; onRestart: () => void }) {
+  return (
+    <div className="text-center">
+      <h2 className="text-3xl font-extrabold mb-2">Your Video is Ready!</h2>
+      <p className="text-slate-500 mb-6">Preview — {title}</p>
+      <div className="rounded-2xl overflow-hidden bg-slate-900 aspect-video flex items-center justify-center text-white mb-6 relative">
+        <div className="text-6xl">▶</div>
+        <div className="absolute bottom-3 left-4 text-sm bg-black/60 px-2 py-1 rounded">0:36 / 2:13</div>
+      </div>
+      <div className="flex justify-center gap-3">
+        <button
+          onClick={onRestart}
+          className="px-5 py-3 rounded-xl border border-slate-200 bg-white font-semibold inline-flex items-center gap-2 hover:bg-slate-50"
+        >
+          ↻ New Project
+        </button>
+        <button className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold inline-flex items-center gap-2">
+          Upload to YouTube <span aria-hidden>→</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Misc ─────────────────────────────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="font-bold mb-2">{label}</p>
+      {children}
     </div>
   );
 }
@@ -473,23 +975,13 @@ function FakeAudioPlayer({ duration }: { duration: string }) {
   );
 }
 
+function SearchIcon() { return <span className="text-2xl">🔍</span>; }
 function YouTubeIcon() {
-  return (
-    <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white font-bold">▶</div>
-  );
+  return <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white font-bold">▶</div>;
 }
-function DocIcon() {
-  return <span className="text-2xl">📄</span>;
-}
-function MicIcon() {
-  return <span className="text-2xl">🎙</span>;
-}
-function FilmIcon() {
-  return <span className="text-2xl">🎬</span>;
-}
-function ImageIcon() {
-  return <span className="text-2xl">🖼</span>;
-}
-function MusicIcon() {
-  return <span className="text-2xl">🎵</span>;
-}
+function DocIcon() { return <span className="text-2xl">📄</span>; }
+function MicIcon() { return <span className="text-2xl">🎙</span>; }
+function FilmIcon() { return <span className="text-2xl">🎬</span>; }
+function ImageIcon() { return <span className="text-2xl">🖼</span>; }
+function MusicIcon() { return <span className="text-2xl">🎵</span>; }
+function TextIcon() { return <span className="text-2xl">📝</span>; }
