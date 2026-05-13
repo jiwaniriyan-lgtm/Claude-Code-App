@@ -324,7 +324,10 @@ function ResearchStep({
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to analyze');
+      if (!res.ok) {
+        const dbg = data.debug ? ` [${JSON.stringify(data.debug)}]` : '';
+        throw new Error((data.error || 'Failed to analyze') + dbg);
+      }
       onSelect(data as Niche);
       setAnalyzed(true);
     } catch (e: any) {

@@ -5,32 +5,33 @@ export const dynamic = 'force-dynamic';
 
 type Video = { title: string; views: string };
 
+const UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+
 function normalizeUrl(input: string): string {
   let url = input.trim();
   if (!url) throw new Error('URL required');
   if (!url.startsWith('http')) url = 'https://' + url;
-  url = url.replace(/\/$/, '');
-  if (url.includes('/videos')) return url;
-  if (url.match(/\/(@[^/]+|c\/[^/]+|channel\/[^/]+|user\/[^/]+)$/)) return url + '/videos';
-  return url;
+  return url.replace(/\/$/, '').replace(/\/videos$/, '');
 }
 
-async function fetchHtml(url: string): Promise<string> {
+async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      'User-Agent': UA,
       'Accept-Language': 'en-US,en;q=0.9',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      // Skip the consent interstitial that YouTube serves to some regions / fresh clients
+      Cookie: 'CONSENT=YES+1; PREF=hl=en',
     },
     cache: 'no-store',
   });
-  if (!res.ok) throw new Error(`YouTube responded ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).hostname}`);
   return res.text();
 }
 
 function extractMeta(html: string, prop: string): string | null {
-  const m = html.match(new RegExp(`<meta[^>]+(?:property|name)="${prop}"[^>]+content="([^"]+)"`));
+  const m = html.match(new RegExp(`<meta[^>]+(?:property|name|itemprop)="${prop}"[^>]+content="([^"]+)"`));
   return m ? decodeHtml(m[1]) : null;
 }
 
@@ -38,127 +39,63 @@ function decodeHtml(s: string): string {
   return s
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
 }
 
-// Find ytInitialData JSON by scanning for the opening `{` after the marker
-// and tracking brace depth until the matching close.
-function extractInitialData(html: string): any | null {
-  const markers = ['var ytInitialData = ', 'window["ytInitialData"] = ', 'ytInitialData = '];
-  let start = -1;
-  for (const m of markers) {
-    const i = html.indexOf(m);
-    if (i !== -1) {
-      start = i + m.length;
-      break;
-    }
-  }
-  if (start === -1) return null;
-  // start should now be at `{`
-  while (start < html.length && html[start] !== '{') start++;
-  if (start >= html.length) return null;
-
-  let depth = 0;
-  let inStr = false;
-  let escape = false;
-  let end = -1;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (c === '\\') {
-      escape = true;
-      continue;
-    }
-    if (c === '"') {
-      inStr = !inStr;
-      continue;
-    }
-    if (inStr) continue;
-    if (c === '{') depth++;
-    else if (c === '}') {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  if (end === -1) return null;
-  try {
-    return JSON.parse(html.slice(start, end));
-  } catch {
-    return null;
-  }
+function extractChannelId(html: string): string | null {
+  return (
+    html.match(/"channelId":"(UC[A-Za-z0-9_-]{20,})"/)?.[1] ||
+    html.match(/<meta[^>]+itemprop="channelId"[^>]+content="(UC[A-Za-z0-9_-]{20,})"/)?.[1] ||
+    html.match(/channel\/(UC[A-Za-z0-9_-]{20,})/)?.[1] ||
+    null
+  );
 }
 
-function getText(node: any): string {
-  if (!node) return '';
-  if (typeof node === 'string') return node;
-  if (node.simpleText) return node.simpleText;
-  if (Array.isArray(node.runs)) return node.runs.map((r: any) => r.text || '').join('');
-  if (node.accessibility?.accessibilityData?.label) return node.accessibility.accessibilityData.label;
-  return '';
+function extractSubsFromHtml(html: string): string | null {
+  return (
+    html.match(/"subscriberCountText":\{"simpleText":"([^"]+)"/)?.[1] ||
+    html.match(/"subscriberCountText":\{"accessibility":\{"accessibilityData":\{"label":"([^"]+)"/)?.[1] ||
+    html.match(/"metadataParts":\[\{"text":\{"content":"([^"]*subscribers?[^"]*)"/)?.[1] ||
+    null
+  );
 }
 
-function walkVideos(node: any, out: Video[], seen: Set<string>, limit: number): void {
-  if (out.length >= limit) return;
-  if (!node || typeof node !== 'object') return;
+function parseRssVideos(xml: string): { channelName: string; videos: Video[] } {
+  // First <title> is the channel name; subsequent <title> inside <entry> are videos.
+  const channelNameMatch = xml.match(/<title>([^<]+)<\/title>/);
+  const channelName = channelNameMatch ? decodeHtml(channelNameMatch[1]) : '';
 
-  if (node.videoRenderer || node.gridVideoRenderer) {
-    const v = node.videoRenderer || node.gridVideoRenderer;
-    const title = getText(v.title).trim();
-    const views =
-      getText(v.viewCountText) ||
-      getText(v.shortViewCountText) ||
-      '';
-    if (title && !seen.has(title)) {
-      seen.add(title);
-      out.push({ title, views });
+  const videos: Video[] = [];
+  const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
+  let m: RegExpExecArray | null;
+  while ((m = entryRe.exec(xml)) !== null) {
+    const entry = m[1];
+    const title = entry.match(/<title>([^<]+)<\/title>/)?.[1];
+    const views = entry.match(/<media:statistics\s+views="(\d+)"/)?.[1];
+    if (title) {
+      videos.push({
+        title: decodeHtml(title).trim(),
+        views: views ? formatViews(parseInt(views, 10)) : '',
+      });
     }
-    return;
   }
-
-  if (Array.isArray(node)) {
-    for (const child of node) walkVideos(child, out, seen, limit);
-    return;
-  }
-  for (const key of Object.keys(node)) {
-    walkVideos(node[key], out, seen, limit);
-    if (out.length >= limit) return;
-  }
+  return { channelName, videos };
 }
 
-function extractSubsFromData(data: any): string | null {
-  // Try a few well-known locations
-  const stack: any[] = [data];
-  while (stack.length) {
-    const n = stack.pop();
-    if (!n || typeof n !== 'object') continue;
-    if (n.subscriberCountText) return getText(n.subscriberCountText);
-    if (n.metadataParts && Array.isArray(n.metadataParts)) {
-      for (const p of n.metadataParts) {
-        const t = getText(p.text);
-        if (t && /subscribers?/i.test(t)) return t;
-      }
-    }
-    if (Array.isArray(n)) {
-      for (const c of n) stack.push(c);
-    } else {
-      for (const k of Object.keys(n)) stack.push(n[k]);
-    }
-  }
-  return null;
+function formatViews(n: number): string {
+  if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B views';
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M views';
+  if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K views';
+  return n + ' views';
 }
 
 function detectFormat(titles: string[]): { pattern: string; variable: string } {
   if (titles.length < 2) return { pattern: titles[0] ?? 'Unknown', variable: 'Unique topics' };
   const tokens = titles.map((t) => t.split(/\s+/));
-
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/gi, '');
 
   let prefix: string[] = [];
@@ -213,39 +150,66 @@ function generateIdeas(pattern: string, variable: string, titles: string[]): { t
 }
 
 export async function POST(req: Request) {
+  const debug: Record<string, any> = {};
   try {
     const { url } = await req.json();
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'url required' }, { status: 400 });
     }
-    const normalized = normalizeUrl(url);
-    const html = await fetchHtml(normalized);
-    if (html.length < 1000) {
-      return NextResponse.json(
-        { error: 'YouTube returned an empty page (possibly rate-limited). Try again in a minute.' },
-        { status: 502 }
-      );
+    const baseUrl = normalizeUrl(url);
+    debug.baseUrl = baseUrl;
+
+    let html = '';
+    try {
+      html = await fetchText(baseUrl);
+      debug.htmlLength = html.length;
+    } catch (e: any) {
+      debug.htmlFetchError = e?.message;
     }
 
-    const data = extractInitialData(html);
+    // Try several places for channel ID
+    let channelId: string | null = null;
+    if (html) channelId = extractChannelId(html);
+    if (!channelId) {
+      // URL itself might already be /channel/UC...
+      channelId = baseUrl.match(/channel\/(UC[A-Za-z0-9_-]{20,})/)?.[1] || null;
+    }
+    debug.channelId = channelId;
 
-    const videos: Video[] = [];
-    if (data) walkVideos(data, videos, new Set(), 12);
-
-    if (videos.length === 0) {
+    if (!channelId) {
       return NextResponse.json(
         {
           error:
-            'Could not parse any videos. The channel may be empty, age-gated, or YouTube changed its page format.',
-          debug: { htmlLength: html.length, foundInitialData: !!data },
+            'Could not find the channel ID. Try pasting the URL directly from your browser address bar (e.g. https://www.youtube.com/@handle).',
+          debug,
         },
         { status: 422 }
       );
     }
 
-    const channel = extractMeta(html, 'og:title') || 'Unknown channel';
-    const description = extractMeta(html, 'og:description') || '';
-    const subscribers = (data && extractSubsFromData(data)) || 'Hidden';
+    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+    const xml = await fetchText(rssUrl);
+    debug.rssLength = xml.length;
+
+    const { channelName, videos } = parseRssVideos(xml);
+    debug.videoCount = videos.length;
+
+    if (videos.length === 0) {
+      return NextResponse.json(
+        { error: 'No videos found in the channel RSS feed.', debug },
+        { status: 422 }
+      );
+    }
+
+    // Sort by views desc when we have view counts
+    videos.sort((a, b) => parseViewsToNumber(b.views) - parseViewsToNumber(a.views));
+
+    const channel =
+      (html && extractMeta(html, 'og:title')) ||
+      channelName ||
+      'Unknown channel';
+    const description = (html && extractMeta(html, 'og:description')) || '';
+    const subscribers = (html && extractSubsFromHtml(html)) || 'Hidden';
 
     const titles = videos.map((v) => v.title);
     const { pattern, variable } = detectFormat(titles);
@@ -253,7 +217,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       channel,
-      url: normalized.replace(/\/videos$/, ''),
+      url: baseUrl,
       description,
       subscribers,
       monetized: true,
@@ -269,6 +233,18 @@ export async function POST(req: Request) {
       topicIdeas: ideas,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Failed to analyze' }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || 'Failed to analyze', debug },
+      { status: 500 }
+    );
   }
+}
+
+function parseViewsToNumber(s: string): number {
+  if (!s) return 0;
+  const m = s.match(/([\d.]+)\s*([KMB])?/i);
+  if (!m) return 0;
+  const n = parseFloat(m[1]);
+  const mult = m[2]?.toUpperCase() === 'B' ? 1e9 : m[2]?.toUpperCase() === 'M' ? 1e6 : m[2]?.toUpperCase() === 'K' ? 1e3 : 1;
+  return n * mult;
 }
