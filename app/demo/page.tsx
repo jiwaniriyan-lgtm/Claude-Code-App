@@ -196,7 +196,9 @@ export default function DemoPage() {
                 selected={niche}
                 onSelect={(n) => {
                   setNiche(n);
-                  setSelectedTitle(TITLES_BY_CHANNEL[n.channel]?.[0] ?? '');
+                  const preset = TITLES_BY_CHANNEL[n.channel]?.[0];
+                  const firstVideo = n.topVideos?.[0]?.title;
+                  setSelectedTitle(preset ?? firstVideo ?? '');
                 }}
                 onContinue={() => goto('title')}
               />
@@ -204,7 +206,12 @@ export default function DemoPage() {
             {active === 'title' && (
               <TitleStep
                 niche={niche}
-                titles={TITLES_BY_CHANNEL[niche.channel] ?? []}
+                titles={
+                  TITLES_BY_CHANNEL[niche.channel] ??
+                  (niche.topicIdeas?.length
+                    ? niche.topicIdeas.map((i) => i.topic)
+                    : niche.topVideos?.map((v) => v.title) ?? [])
+                }
                 selected={selectedTitle}
                 onSelect={setSelectedTitle}
                 onContinue={() => goto('script')}
@@ -298,11 +305,33 @@ function ResearchStep({
 }) {
   const [url, setUrl] = useState(selected.url);
   const [analyzed, setAnalyzed] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const analyze = () => {
-    const match = niches.find((n) => url.includes(n.channel.replace('@', '')));
-    if (match) onSelect(match);
-    setAnalyzed(true);
+  const analyze = async () => {
+    setError(null);
+    const preset = niches.find((n) => url.toLowerCase().includes(n.channel.replace('@', '').toLowerCase()));
+    if (preset) {
+      onSelect(preset);
+      setAnalyzed(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/analyze-channel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to analyze');
+      onSelect(data as Niche);
+      setAnalyzed(true);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to analyze');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -329,11 +358,17 @@ function ResearchStep({
           />
           <button
             onClick={analyze}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl px-6 py-3"
+            disabled={loading}
+            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold rounded-xl px-6 py-3"
           >
-            Analyze
+            {loading ? 'Analyzing…' : 'Analyze'}
           </button>
         </div>
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {niches.map((n) => (
             <button
