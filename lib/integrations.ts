@@ -1,65 +1,81 @@
 /**
- * Integration adapter stubs for V1.1+.
- *
- * V1 ships fully AI-simulated (per Section 9 Tier 1 of the brief). These
- * adapters are stubbed so the V1.1+ work is "implement adapter X" rather
- * than "rearchitect the app." Wire env vars, fill in the function bodies,
- * call from the relevant API routes.
- *
- * Roadmap (recommended order):
- *   V1.1 — Anthropic Claude fallback (lib/openai.ts → wrap with anthropic.ts)
- *          vidIQ keyword data (used in State 7 + State 8 routes)
- *   V1.2 — ElevenLabs voiceover (State 6: async job + audio storage)
- *   V1.3 — Heygen / Higgsfield video (State 5 video toggle: async job)
+ * High-level integration facade. Routes call into here instead of directly into
+ * provider clients so we can swap providers / add fallbacks in one place.
  */
 
+import { listVoices as elListVoices, synthesizeSpeech as elSynthesize } from './elevenlabs';
+import {
+  animateImage as repAnimate,
+  generateImage as repGenImage,
+  getPrediction as repGet,
+  firstUrl,
+  REPLICATE_IMAGE_MODEL,
+  REPLICATE_VIDEO_MODEL,
+} from './replicate';
+
 // ─── Anthropic (Claude fallback model) ──────────────────────────────────
+// Not yet wired — scripts continue to flow through OpenAI in lib/openai.ts.
+// Implement when adding multi-model selection in settings.
 export type AnthropicConfig = { apiKey?: string; model?: string };
 export async function callClaude(_prompt: string, _opts: AnthropicConfig = {}): Promise<string> {
-  // V1.1 implementation:
-  //   const Anthropic = (await import('@anthropic-ai/sdk')).default;
-  //   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  //   const res = await client.messages.create({
-  //     model: 'claude-opus-4-7', max_tokens: 4000,
-  //     messages: [{ role: 'user', content: _prompt }],
-  //   });
-  //   return res.content[0].type === 'text' ? res.content[0].text : '';
-  throw new Error('Anthropic adapter not yet implemented (V1.1).');
+  throw new Error('Anthropic adapter not yet implemented.');
 }
 
 // ─── vidIQ (real keyword + score data) ─────────────────────────────────
 export type VidIQKeyword = { keyword: string; volume: number; competition: number; intent: string };
 export async function fetchVidIQKeywords(_topic: string): Promise<VidIQKeyword[]> {
-  // V1.1: GET https://api.vidiq.com/keyword/?... with bearer token
-  // Inject results into State 7/8 prompt context as `realKeywords` field.
-  throw new Error('vidIQ adapter not yet implemented (V1.1).');
+  throw new Error('vidIQ adapter not yet implemented.');
 }
 export async function fetchVidIQTitleScore(_title: string): Promise<{ score: number; suggestions: string[] }> {
-  throw new Error('vidIQ adapter not yet implemented (V1.1).');
+  throw new Error('vidIQ adapter not yet implemented.');
 }
 
 // ─── ElevenLabs (voice synthesis) ──────────────────────────────────────
-export type ElevenLabsJob = { jobId: string; status: 'queued' | 'processing' | 'done' | 'failed'; audioUrl?: string };
-export async function startElevenLabsJob(_script: string, _voiceId: string): Promise<ElevenLabsJob> {
-  // V1.2: POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id} → MP3 bytes
-  // Stream into Supabase Storage at workbook-audio/{user_id}/{wb_id}/state6.mp3
-  throw new Error('ElevenLabs adapter not yet implemented (V1.2).');
-}
-export async function listElevenLabsVoices(): Promise<Array<{ id: string; name: string; preview_url?: string }>> {
-  throw new Error('ElevenLabs adapter not yet implemented (V1.2).');
+export const listElevenLabsVoices = elListVoices;
+
+export type ElevenLabsSynthArgs = {
+  script: string;
+  voiceId: string;
+  modelId?: string;
+  stability?: number;
+  similarityBoost?: number;
+  style?: number;
+};
+
+export async function synthesizeWithElevenLabs(args: ElevenLabsSynthArgs) {
+  return elSynthesize({
+    voiceId: args.voiceId,
+    text: args.script,
+    modelId: args.modelId,
+    stability: args.stability,
+    similarityBoost: args.similarityBoost,
+    style: args.style,
+  });
 }
 
-// ─── Heygen (avatar video generation) ──────────────────────────────────
-export type HeygenJob = { jobId: string; status: 'queued' | 'processing' | 'done' | 'failed'; videoUrl?: string };
-export async function startHeygenJob(_script: string, _avatarId: string, _voiceId: string): Promise<HeygenJob> {
-  // V1.3: POST /v2/video/generate
-  // Webhook: app/api/integrations/heygen/webhook/route.ts to receive completion.
-  throw new Error('Heygen adapter not yet implemented (V1.3).');
+// ─── Replicate (image + image-to-video) ────────────────────────────────
+export const replicateImageModel = REPLICATE_IMAGE_MODEL;
+export const replicateVideoModel = REPLICATE_VIDEO_MODEL;
+
+export async function startImageGeneration(prompt: string, aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3') {
+  return repGenImage(prompt, { aspectRatio });
 }
 
-// ─── Higgsfield (B-roll video clips) ───────────────────────────────────
-export type HiggsfieldJob = { jobId: string; status: 'queued' | 'processing' | 'done' | 'failed'; clipUrl?: string };
-export async function startHiggsfieldJob(_clipPrompt: string): Promise<HiggsfieldJob> {
-  // V1.3: paired with State 5 video clip prompts when enabled.
-  throw new Error('Higgsfield adapter not yet implemented (V1.3).');
+export async function startImageToVideo(args: {
+  imageUrl: string;
+  prompt: string;
+  durationSec?: 5 | 10;
+  aspectRatio?: '16:9' | '9:16' | '1:1';
+}) {
+  return repAnimate(args);
+}
+
+export async function pollReplicate(predictionId: string) {
+  const pred = await repGet(predictionId);
+  return {
+    status: pred.status,
+    error: pred.error,
+    outputUrl: pred.output ? firstUrl(pred.output) : null,
+    raw: pred,
+  };
 }
