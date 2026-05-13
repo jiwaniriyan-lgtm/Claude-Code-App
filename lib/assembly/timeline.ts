@@ -58,6 +58,13 @@ export type Timeline = {
     fontColor?: string;        // "#FFFFFF"
     backgroundOpacity?: number; // 0..1
     position?: 'bottom' | 'center' | 'top';
+    /** When true, worker calls OpenAI Whisper on the voiceover and generates word-level SRT. */
+    transcribeVoiceover?: boolean;
+  };
+  /** Optional xfade transitions between scenes (hard cuts by default). */
+  transitions?: {
+    type: 'fade' | 'wipeleft' | 'wiperight' | 'slideleft' | 'slideright' | 'circleopen' | 'dissolve';
+    durationSec: number;
   };
   scenes: Scene[];
 };

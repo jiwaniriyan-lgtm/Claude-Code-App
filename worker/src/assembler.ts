@@ -4,6 +4,7 @@ import * as path from 'path';
 import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import ffmpeg from 'fluent-ffmpeg';
 import { download } from './download';
+import { transcribeToSrt } from './whisper';
 import type { Scene, Timeline } from './types';
 
 ffmpeg.setFfmpegPath(ffmpegPath.path);
@@ -46,30 +47,44 @@ export async function assemble(timeline: Timeline): Promise<AssemblyResult> {
     sceneClips.push(out);
   }
 
-  // 3) Concat scene clips
-  const concatList = path.join(workDir, 'concat.txt');
-  await fs.writeFile(concatList, sceneClips.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n'));
-  const concatOut = path.join(workDir, 'concat.mp4');
-  await runFfmpeg((cmd) =>
-    cmd
-      .input(concatList)
-      .inputOptions(['-f', 'concat', '-safe', '0'])
-      .outputOptions(['-c', 'copy', '-movflags', '+faststart'])
-      .save(concatOut),
-  );
+  // 3) Join scene clips — concat demuxer (hard cuts) or xfade chain
+  let concatOut: string;
+  if (timeline.transitions && sceneClips.length > 1) {
+    concatOut = await xfadeChain(sceneClips, timeline, workDir);
+  } else {
+    const concatList = path.join(workDir, 'concat.txt');
+    await fs.writeFile(concatList, sceneClips.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n'));
+    concatOut = path.join(workDir, 'concat.mp4');
+    await runFfmpeg((cmd) =>
+      cmd
+        .input(concatList)
+        .inputOptions(['-f', 'concat', '-safe', '0'])
+        .outputOptions(['-c', 'copy', '-movflags', '+faststart'])
+        .save(concatOut),
+    );
+  }
 
   // 4) Mux audio (voiceover ± music)
   const audioMixOut = await muxAudio(timeline, concatOut, workDir);
 
-  // 5) Optional subtitle burn-in
+  // 5) Optional subtitle burn-in. If transcribeVoiceover is requested and we
+  //    have a voiceover, run Whisper for word-accurate timings; otherwise use
+  //    the provided SRT verbatim.
   let finalOut = audioMixOut;
-  if (timeline.subtitles?.srt) {
+  let srt: string | null = timeline.subtitles?.srt ?? null;
+  if (timeline.subtitles?.transcribeVoiceover && timeline.voiceoverUrl) {
+    try {
+      const voicePath = await download(timeline.voiceoverUrl, workDir, 'voiceover_for_whisper.mp3');
+      srt = await transcribeToSrt(voicePath);
+    } catch (err) {
+      console.error('[assembler] whisper failed, falling back to provided srt:', err);
+    }
+  }
+  if (timeline.subtitles && srt && srt.trim()) {
     const srtPath = path.join(workDir, 'subs.srt');
-    await fs.writeFile(srtPath, timeline.subtitles.srt);
+    await fs.writeFile(srtPath, srt);
     finalOut = path.join(workDir, 'final.mp4');
     await burnSubtitles(audioMixOut, srtPath, finalOut, timeline.subtitles);
-  } else {
-    finalOut = audioMixOut;
   }
 
   const durationSec = timeline.scenes.reduce((a, s) => a + s.durationSec, 0);
@@ -250,6 +265,54 @@ function swapToAss(hex: string): string {
   // FFmpeg/libass uses BBGGRR not RRGGBB
   const r = hex.slice(0, 2), g = hex.slice(2, 4), b = hex.slice(4, 6);
   return `${b}${g}${r}`;
+}
+
+// ─── xfade chain ──────────────────────────────────────────────────────────
+
+async function xfadeChain(clips: string[], timeline: Timeline, workDir: string): Promise<string> {
+  const tr = timeline.transitions!;
+  const dur = Math.max(0.1, Math.min(tr.durationSec, 2));
+  const out = path.join(workDir, 'concat.mp4');
+
+  const durations = await Promise.all(clips.map((c) => probeDuration(c)));
+
+  const filters: string[] = [];
+  let lastLabel = '0:v';
+  let runningOffset = 0;
+
+  for (let i = 1; i < clips.length; i++) {
+    runningOffset += durations[i - 1] - dur;
+    const outLabel = `vx${i}`;
+    filters.push(`[${lastLabel}][${i}:v]xfade=transition=${tr.type}:duration=${dur}:offset=${runningOffset.toFixed(3)}[${outLabel}]`);
+    lastLabel = outLabel;
+  }
+
+  await runFfmpeg((cmd) => {
+    clips.forEach((c) => cmd.input(c));
+    cmd
+      .complexFilter(filters)
+      .outputOptions([
+        '-map', `[${lastLabel}]`,
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '20',
+        '-pix_fmt', 'yuv420p',
+        '-movflags', '+faststart',
+      ])
+      .save(out);
+  });
+  return out;
+}
+
+function probeDuration(file: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(file, (err, data) => {
+      if (err) return reject(err);
+      const d = data.format?.duration;
+      if (typeof d === 'number') resolve(d);
+      else reject(new Error('no duration'));
+    });
+  });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────

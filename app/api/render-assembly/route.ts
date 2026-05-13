@@ -47,6 +47,13 @@ const TimelineSchema = z.object({
       fontColor: z.string().optional(),
       backgroundOpacity: z.number().min(0).max(1).optional(),
       position: z.enum(['bottom', 'center', 'top']).optional(),
+      transcribeVoiceover: z.boolean().optional(),
+    })
+    .optional(),
+  transitions: z
+    .object({
+      type: z.enum(['fade', 'wipeleft', 'wiperight', 'slideleft', 'slideright', 'circleopen', 'dissolve']),
+      durationSec: z.number().min(0.1).max(2),
     })
     .optional(),
   scenes: z.array(Scene).min(1).max(120),

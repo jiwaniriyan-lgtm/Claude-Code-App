@@ -30,6 +30,11 @@ export type Timeline = {
     fontColor?: string;
     backgroundOpacity?: number;
     position?: 'bottom' | 'center' | 'top';
+    transcribeVoiceover?: boolean;
+  };
+  transitions?: {
+    type: 'fade' | 'wipeleft' | 'wiperight' | 'slideleft' | 'slideright' | 'circleopen' | 'dissolve';
+    durationSec: number;
   };
   scenes: Scene[];
 };
