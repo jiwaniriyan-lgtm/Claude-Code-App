@@ -1,0 +1,18 @@
+app = "copperai-worker"
+primary_region = "iad"
+
+[build]
+
+[env]
+  POLL_INTERVAL_MS = "4000"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"
+  cpus = 2
+
+[deploy]
+  strategy = "immediate"
+
+[processes]
+  worker = "node dist/index.js"
