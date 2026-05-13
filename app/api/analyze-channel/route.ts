@@ -21,6 +21,7 @@ async function fetchHtml(url: string): Promise<string> {
       'User-Agent':
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
       'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
     cache: 'no-store',
   });
@@ -42,63 +43,149 @@ function decodeHtml(s: string): string {
     .replace(/&gt;/g, '>');
 }
 
-function extractSubs(html: string): string | null {
-  const m =
-    html.match(/"subscriberCountText":\{"simpleText":"([^"]+)"/) ||
-    html.match(/"subscriberCountText":\{"accessibility":\{"accessibilityData":\{"label":"([^"]+)"/) ||
-    html.match(/"metadataParts":\[\{"text":\{"content":"([^"]*subscribers[^"]*)"/);
-  return m ? m[1] : null;
+// Find ytInitialData JSON by scanning for the opening `{` after the marker
+// and tracking brace depth until the matching close.
+function extractInitialData(html: string): any | null {
+  const markers = ['var ytInitialData = ', 'window["ytInitialData"] = ', 'ytInitialData = '];
+  let start = -1;
+  for (const m of markers) {
+    const i = html.indexOf(m);
+    if (i !== -1) {
+      start = i + m.length;
+      break;
+    }
+  }
+  if (start === -1) return null;
+  // start should now be at `{`
+  while (start < html.length && html[start] !== '{') start++;
+  if (start >= html.length) return null;
+
+  let depth = 0;
+  let inStr = false;
+  let escape = false;
+  let end = -1;
+  for (let i = start; i < html.length; i++) {
+    const c = html[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === '\\') {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr) continue;
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+  }
+  if (end === -1) return null;
+  try {
+    return JSON.parse(html.slice(start, end));
+  } catch {
+    return null;
+  }
 }
 
-function extractVideos(html: string, limit = 12): Video[] {
-  const videos: Video[] = [];
-  const seen = new Set<string>();
-  const regex =
-    /"videoRenderer":\{[^}]*?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"\}\][^}]*?(?:"viewCountText":\{"simpleText":"((?:[^"\\]|\\.)*)"\}|"shortViewCountText":\{"accessibility":\{"accessibilityData":\{"label":"((?:[^"\\]|\\.)*)"\}\})?/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(html)) !== null) {
-    const title = decodeHtml(match[1].replace(/\\(.)/g, '$1')).trim();
-    const views = (match[2] || match[3] || '').replace(/\\(.)/g, '$1').trim();
-    if (!title || seen.has(title)) continue;
-    seen.add(title);
-    videos.push({ title, views });
-    if (videos.length >= limit) break;
+function getText(node: any): string {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (node.simpleText) return node.simpleText;
+  if (Array.isArray(node.runs)) return node.runs.map((r: any) => r.text || '').join('');
+  if (node.accessibility?.accessibilityData?.label) return node.accessibility.accessibilityData.label;
+  return '';
+}
+
+function walkVideos(node: any, out: Video[], seen: Set<string>, limit: number): void {
+  if (out.length >= limit) return;
+  if (!node || typeof node !== 'object') return;
+
+  if (node.videoRenderer || node.gridVideoRenderer) {
+    const v = node.videoRenderer || node.gridVideoRenderer;
+    const title = getText(v.title).trim();
+    const views =
+      getText(v.viewCountText) ||
+      getText(v.shortViewCountText) ||
+      '';
+    if (title && !seen.has(title)) {
+      seen.add(title);
+      out.push({ title, views });
+    }
+    return;
   }
-  return videos;
+
+  if (Array.isArray(node)) {
+    for (const child of node) walkVideos(child, out, seen, limit);
+    return;
+  }
+  for (const key of Object.keys(node)) {
+    walkVideos(node[key], out, seen, limit);
+    if (out.length >= limit) return;
+  }
+}
+
+function extractSubsFromData(data: any): string | null {
+  // Try a few well-known locations
+  const stack: any[] = [data];
+  while (stack.length) {
+    const n = stack.pop();
+    if (!n || typeof n !== 'object') continue;
+    if (n.subscriberCountText) return getText(n.subscriberCountText);
+    if (n.metadataParts && Array.isArray(n.metadataParts)) {
+      for (const p of n.metadataParts) {
+        const t = getText(p.text);
+        if (t && /subscribers?/i.test(t)) return t;
+      }
+    }
+    if (Array.isArray(n)) {
+      for (const c of n) stack.push(c);
+    } else {
+      for (const k of Object.keys(n)) stack.push(n[k]);
+    }
+  }
+  return null;
 }
 
 function detectFormat(titles: string[]): { pattern: string; variable: string } {
   if (titles.length < 2) return { pattern: titles[0] ?? 'Unknown', variable: 'Unique topics' };
-
-  // Tokenize and find longest common prefix and suffix (token-level)
   const tokens = titles.map((t) => t.split(/\s+/));
+
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/gi, '');
 
   let prefix: string[] = [];
   outerP: for (let i = 0; i < tokens[0].length; i++) {
-    const w = tokens[0][i].toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const w = norm(tokens[0][i]);
     for (const arr of tokens) {
-      if (!arr[i] || arr[i].toLowerCase().replace(/[^a-z0-9]/gi, '') !== w) break outerP;
+      if (!arr[i] || norm(arr[i]) !== w) break outerP;
     }
     prefix.push(tokens[0][i]);
   }
 
   let suffix: string[] = [];
   outerS: for (let i = 1; i <= tokens[0].length - prefix.length; i++) {
-    const w = tokens[0][tokens[0].length - i].toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const w = norm(tokens[0][tokens[0].length - i]);
     for (const arr of tokens) {
       const idx = arr.length - i;
-      if (idx < prefix.length || arr[idx].toLowerCase().replace(/[^a-z0-9]/gi, '') !== w) break outerS;
+      if (idx < prefix.length || norm(arr[idx]) !== w) break outerS;
     }
     suffix.unshift(tokens[0][tokens[0].length - i]);
   }
 
   const pre = prefix.join(' ');
   const suf = suffix.join(' ');
-  const pattern = [pre, '<X>', suf].filter(Boolean).join(' ').trim();
   if (!pre && !suf) {
     return { pattern: 'No strong repeating pattern detected', variable: 'Each title is unique' };
   }
-  // Sample what X looks like
+  const pattern = [pre, '<X>', suf].filter(Boolean).join(' ').trim();
   const samples = titles
     .slice(0, 5)
     .map((t) => {
@@ -116,16 +203,13 @@ function escapeRe(s: string): string {
 }
 
 function generateIdeas(pattern: string, variable: string, titles: string[]): { topic: string; reason: string }[] {
-  const x = pattern.includes('<X>') ? pattern : null;
-  if (!x) return [];
-  // Pull some sample X values, then suggest related ones with a tiny adjacency list
+  if (!pattern.includes('<X>')) return [];
   const samples = variable.replace(/^X\s*=\s*/, '').split(',').map((s) => s.trim()).filter(Boolean);
   const seeds = samples.length ? samples : titles.slice(0, 3);
-  const ideas = seeds.slice(0, 4).map((seed) => ({
-    topic: x.replace('<X>', seed + ' (variant)'),
-    reason: `Builds on top-performing "${seed}" with a fresh angle.`,
+  return seeds.slice(0, 4).map((seed) => ({
+    topic: pattern.replace('<X>', seed + ' (your angle)'),
+    reason: `Builds on top-performing "${seed}" with a fresh take.`,
   }));
-  return ideas;
 }
 
 export async function POST(req: Request) {
@@ -136,21 +220,36 @@ export async function POST(req: Request) {
     }
     const normalized = normalizeUrl(url);
     const html = await fetchHtml(normalized);
+    if (html.length < 1000) {
+      return NextResponse.json(
+        { error: 'YouTube returned an empty page (possibly rate-limited). Try again in a minute.' },
+        { status: 502 }
+      );
+    }
 
-    const channel = extractMeta(html, 'og:title') || 'Unknown channel';
-    const description = extractMeta(html, 'og:description') || '';
-    const subscribers = extractSubs(html) || 'Hidden';
-    const videos = extractVideos(html, 10);
+    const data = extractInitialData(html);
+
+    const videos: Video[] = [];
+    if (data) walkVideos(data, videos, new Set(), 12);
 
     if (videos.length === 0) {
       return NextResponse.json(
-        { error: 'Could not parse any videos from this channel. Try the channel URL ending in /videos.' },
+        {
+          error:
+            'Could not parse any videos. The channel may be empty, age-gated, or YouTube changed its page format.',
+          debug: { htmlLength: html.length, foundInitialData: !!data },
+        },
         { status: 422 }
       );
     }
 
-    const { pattern, variable } = detectFormat(videos.map((v) => v.title));
-    const ideas = generateIdeas(pattern, variable, videos.map((v) => v.title));
+    const channel = extractMeta(html, 'og:title') || 'Unknown channel';
+    const description = extractMeta(html, 'og:description') || '';
+    const subscribers = (data && extractSubsFromData(data)) || 'Hidden';
+
+    const titles = videos.map((v) => v.title);
+    const { pattern, variable } = detectFormat(titles);
+    const ideas = generateIdeas(pattern, variable, titles);
 
     return NextResponse.json({
       channel,
