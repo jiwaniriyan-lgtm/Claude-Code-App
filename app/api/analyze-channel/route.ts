@@ -12,24 +12,24 @@ function normalizeUrl(input: string): string {
   let url = input.trim();
   if (!url) throw new Error('URL required');
   if (!url.startsWith('http')) url = 'https://' + url;
-  return url.replace(/\/$/, '').replace(/\/videos$/, '');
+  url = url.replace(/\/$/, '');
+  // Always hit the /videos tab — that's where the grid lives.
+  if (url.match(/\/(@[^/]+|c\/[^/]+|channel\/[^/]+|user\/[^/]+)$/)) url += '/videos';
+  return url;
 }
 
-async function fetchText(url: string, opts?: { withCookie?: boolean }): Promise<string> {
-  const headers: Record<string, string> = {
-    'User-Agent': UA,
-    'Accept-Language': 'en-US,en;q=0.9',
-    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  };
-  if (opts?.withCookie) headers['Cookie'] = 'CONSENT=YES+1; PREF=hl=en';
-  const res = await fetch(url, { headers, cache: 'no-store' });
+async function fetchHtml(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': UA,
+      'Accept-Language': 'en-US,en;q=0.9',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      Cookie: 'CONSENT=YES+1; PREF=hl=en&gl=US',
+    },
+    cache: 'no-store',
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).hostname}`);
   return res.text();
-}
-
-function extractMeta(html: string, prop: string): string | null {
-  const m = html.match(new RegExp(`<meta[^>]+(?:property|name|itemprop)="${prop}"[^>]+content="([^"]+)"`));
-  return m ? decodeHtml(m[1]) : null;
 }
 
 function decodeHtml(s: string): string {
@@ -43,16 +43,113 @@ function decodeHtml(s: string): string {
     .replace(/&gt;/g, '>');
 }
 
-function extractChannelId(html: string): string | null {
-  // Canonical URL is the most reliable — points to the actual channel of the page.
-  return (
-    html.match(/<link\s+rel="canonical"\s+href="https?:\/\/www\.youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})/)?.[1] ||
-    html.match(/<meta[^>]+itemprop="channelId"[^>]+content="(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
-    html.match(/"externalChannelId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
-    html.match(/"browseId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
-    html.match(/"channelId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
-    null
+function extractMeta(html: string, prop: string): string | null {
+  const re = new RegExp(
+    `<meta[^>]+(?:property|name|itemprop)=["']${prop}["'][^>]+content=["']([^"']+)["']|<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name|itemprop)=["']${prop}["']`,
   );
+  const m = html.match(re);
+  return m ? decodeHtml(m[1] || m[2]) : null;
+}
+
+// Strategy A: var ytInitialData = {...};
+// Strategy B: ytInitialData":{...} embedded in larger JSON
+function extractInitialData(html: string): any | null {
+  const candidates: number[] = [];
+  const markerA = html.indexOf('var ytInitialData = ');
+  if (markerA !== -1) candidates.push(markerA + 'var ytInitialData = '.length);
+  const markerB = html.indexOf('window["ytInitialData"] = ');
+  if (markerB !== -1) candidates.push(markerB + 'window["ytInitialData"] = '.length);
+
+  for (const start of candidates) {
+    let s = start;
+    while (s < html.length && html[s] !== '{') s++;
+    if (s >= html.length) continue;
+    const end = matchBraces(html, s);
+    if (end === -1) continue;
+    try {
+      return JSON.parse(html.slice(s, end));
+    } catch {
+      /* fall through */
+    }
+  }
+  return null;
+}
+
+function matchBraces(s: string, start: number): number {
+  let depth = 0;
+  let inStr = false;
+  let escape = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === '\\') {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr) continue;
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
+function getText(node: any): string {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (node.simpleText) return node.simpleText;
+  if (Array.isArray(node.runs)) return node.runs.map((r: any) => r.text || '').join('');
+  if (node.accessibility?.accessibilityData?.label) return node.accessibility.accessibilityData.label;
+  return '';
+}
+
+function walkVideos(node: any, out: Video[], seen: Set<string>, limit: number): void {
+  if (out.length >= limit || !node || typeof node !== 'object') return;
+  if (node.videoRenderer || node.gridVideoRenderer) {
+    const v = node.videoRenderer || node.gridVideoRenderer;
+    const title = getText(v.title).trim();
+    const views = getText(v.viewCountText) || getText(v.shortViewCountText) || '';
+    if (title && !seen.has(title)) {
+      seen.add(title);
+      out.push({ title, views });
+    }
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const c of node) walkVideos(c, out, seen, limit);
+    return;
+  }
+  for (const k of Object.keys(node)) {
+    walkVideos(node[k], out, seen, limit);
+    if (out.length >= limit) return;
+  }
+}
+
+// Fallback: regex over raw HTML. Looks for title runs followed soon after
+// by a videoId, which is the standard layout in videoRenderer JSON.
+function extractVideosRegex(html: string, limit = 12): Video[] {
+  const out: Video[] = [];
+  const seen = new Set<string>();
+  const re = /"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.){3,200}?)"\}\][^{}]{0,2000}?"videoId":"[A-Za-z0-9_-]{11}"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const title = decodeHtml(m[1].replace(/\\"/g, '"').replace(/\\u0026/g, '&').replace(/\\(.)/g, '$1')).trim();
+    if (title && !seen.has(title) && title.length > 2 && !/^[A-Z]{2,4}$/.test(title)) {
+      seen.add(title);
+      out.push({ title, views: '' });
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
 }
 
 function extractSubsFromHtml(html: string): string | null {
@@ -60,37 +157,9 @@ function extractSubsFromHtml(html: string): string | null {
     html.match(/"subscriberCountText":\{"simpleText":"([^"]+)"/)?.[1] ||
     html.match(/"subscriberCountText":\{"accessibility":\{"accessibilityData":\{"label":"([^"]+)"/)?.[1] ||
     html.match(/"metadataParts":\[\{"text":\{"content":"([^"]*subscribers?[^"]*)"/)?.[1] ||
+    html.match(/([\d.]+[KMB]?\s+subscribers)/i)?.[1] ||
     null
   );
-}
-
-function parseRssVideos(xml: string): { channelName: string; videos: Video[] } {
-  // First <title> is the channel name; subsequent <title> inside <entry> are videos.
-  const channelNameMatch = xml.match(/<title>([^<]+)<\/title>/);
-  const channelName = channelNameMatch ? decodeHtml(channelNameMatch[1]) : '';
-
-  const videos: Video[] = [];
-  const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
-  let m: RegExpExecArray | null;
-  while ((m = entryRe.exec(xml)) !== null) {
-    const entry = m[1];
-    const title = entry.match(/<title>([^<]+)<\/title>/)?.[1];
-    const views = entry.match(/<media:statistics\s+views="(\d+)"/)?.[1];
-    if (title) {
-      videos.push({
-        title: decodeHtml(title).trim(),
-        views: views ? formatViews(parseInt(views, 10)) : '',
-      });
-    }
-  }
-  return { channelName, videos };
-}
-
-function formatViews(n: number): string {
-  if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B views';
-  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M views';
-  if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K views';
-  return n + ' views';
 }
 
 function detectFormat(titles: string[]): { pattern: string; variable: string } {
@@ -156,61 +225,46 @@ export async function POST(req: Request) {
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'url required' }, { status: 400 });
     }
-    const baseUrl = normalizeUrl(url);
-    debug.baseUrl = baseUrl;
+    const target = normalizeUrl(url);
+    debug.target = target;
 
-    let html = '';
-    try {
-      html = await fetchText(baseUrl, { withCookie: true });
-      debug.htmlLength = html.length;
-    } catch (e: any) {
-      debug.htmlFetchError = e?.message;
+    const html = await fetchHtml(target);
+    debug.htmlLength = html.length;
+
+    if (html.length < 5000) {
+      return NextResponse.json(
+        { error: 'YouTube returned an empty/blocked page. Try again in a minute.', debug },
+        { status: 502 }
+      );
     }
 
-    // Try several places for channel ID
-    let channelId: string | null = null;
-    if (html) channelId = extractChannelId(html);
-    if (!channelId) {
-      // URL itself might already be /channel/UC...
-      channelId = baseUrl.match(/channel\/(UC[A-Za-z0-9_-]{20,})/)?.[1] || null;
-    }
-    debug.channelId = channelId;
+    const data = extractInitialData(html);
+    debug.foundInitialData = !!data;
 
-    if (!channelId) {
+    const videos: Video[] = [];
+    if (data) walkVideos(data, videos, new Set(), 12);
+    debug.videosFromJson = videos.length;
+
+    if (videos.length === 0) {
+      const regexVideos = extractVideosRegex(html, 12);
+      debug.videosFromRegex = regexVideos.length;
+      videos.push(...regexVideos);
+    }
+
+    if (videos.length === 0) {
       return NextResponse.json(
         {
           error:
-            'Could not find the channel ID. Try pasting the URL directly from your browser address bar (e.g. https://www.youtube.com/@handle).',
+            'Could not parse any videos from this channel. The channel may have no public uploads.',
           debug,
         },
         { status: 422 }
       );
     }
 
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-    debug.rssUrl = rssUrl;
-    const xml = await fetchText(rssUrl);
-    debug.rssLength = xml.length;
-
-    const { channelName, videos } = parseRssVideos(xml);
-    debug.videoCount = videos.length;
-
-    if (videos.length === 0) {
-      return NextResponse.json(
-        { error: 'No videos found in the channel RSS feed.', debug },
-        { status: 422 }
-      );
-    }
-
-    // Sort by views desc when we have view counts
-    videos.sort((a, b) => parseViewsToNumber(b.views) - parseViewsToNumber(a.views));
-
-    const channel =
-      (html && extractMeta(html, 'og:title')) ||
-      channelName ||
-      'Unknown channel';
-    const description = (html && extractMeta(html, 'og:description')) || '';
-    const subscribers = (html && extractSubsFromHtml(html)) || 'Hidden';
+    const channel = extractMeta(html, 'og:title') || 'Unknown channel';
+    const description = extractMeta(html, 'og:description') || '';
+    const subscribers = extractSubsFromHtml(html) || 'Hidden';
 
     const titles = videos.map((v) => v.title);
     const { pattern, variable } = detectFormat(titles);
@@ -218,7 +272,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       channel,
-      url: baseUrl,
+      url: target.replace(/\/videos$/, ''),
       description,
       subscribers,
       monetized: true,
@@ -234,18 +288,6 @@ export async function POST(req: Request) {
       topicIdeas: ideas,
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || 'Failed to analyze', debug },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err?.message || 'Failed to analyze', debug }, { status: 500 });
   }
-}
-
-function parseViewsToNumber(s: string): number {
-  if (!s) return 0;
-  const m = s.match(/([\d.]+)\s*([KMB])?/i);
-  if (!m) return 0;
-  const n = parseFloat(m[1]);
-  const mult = m[2]?.toUpperCase() === 'B' ? 1e9 : m[2]?.toUpperCase() === 'M' ? 1e6 : m[2]?.toUpperCase() === 'K' ? 1e3 : 1;
-  return n * mult;
 }
