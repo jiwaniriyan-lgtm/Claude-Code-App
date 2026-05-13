@@ -15,17 +15,14 @@ function normalizeUrl(input: string): string {
   return url.replace(/\/$/, '').replace(/\/videos$/, '');
 }
 
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': UA,
-      'Accept-Language': 'en-US,en;q=0.9',
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      // Skip the consent interstitial that YouTube serves to some regions / fresh clients
-      Cookie: 'CONSENT=YES+1; PREF=hl=en',
-    },
-    cache: 'no-store',
-  });
+async function fetchText(url: string, opts?: { withCookie?: boolean }): Promise<string> {
+  const headers: Record<string, string> = {
+    'User-Agent': UA,
+    'Accept-Language': 'en-US,en;q=0.9',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  };
+  if (opts?.withCookie) headers['Cookie'] = 'CONSENT=YES+1; PREF=hl=en';
+  const res = await fetch(url, { headers, cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).hostname}`);
   return res.text();
 }
@@ -47,10 +44,13 @@ function decodeHtml(s: string): string {
 }
 
 function extractChannelId(html: string): string | null {
+  // Canonical URL is the most reliable — points to the actual channel of the page.
   return (
-    html.match(/"channelId":"(UC[A-Za-z0-9_-]{20,})"/)?.[1] ||
-    html.match(/<meta[^>]+itemprop="channelId"[^>]+content="(UC[A-Za-z0-9_-]{20,})"/)?.[1] ||
-    html.match(/channel\/(UC[A-Za-z0-9_-]{20,})/)?.[1] ||
+    html.match(/<link\s+rel="canonical"\s+href="https?:\/\/www\.youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})/)?.[1] ||
+    html.match(/<meta[^>]+itemprop="channelId"[^>]+content="(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
+    html.match(/"externalChannelId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
+    html.match(/"browseId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
+    html.match(/"channelId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ||
     null
   );
 }
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
 
     let html = '';
     try {
-      html = await fetchText(baseUrl);
+      html = await fetchText(baseUrl, { withCookie: true });
       debug.htmlLength = html.length;
     } catch (e: any) {
       debug.htmlFetchError = e?.message;
@@ -188,6 +188,7 @@ export async function POST(req: Request) {
     }
 
     const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+    debug.rssUrl = rssUrl;
     const xml = await fetchText(rssUrl);
     debug.rssLength = xml.length;
 
