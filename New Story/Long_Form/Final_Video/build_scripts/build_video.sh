@@ -21,6 +21,14 @@ IMG_DIR="$ROOT/images"
 AUDIO_DIR="$ROOT/audio_placeholder"
 TMP_DIR="$ROOT/_build_tmp"
 OUT_DIR="$ROOT/output"
+
+# Always wipe the per-scene build cache so a new audio regen takes effect.
+# If you want to reuse cached scene clips, pass --keep-cache.
+if [[ "${1:-}" != "--keep-cache" ]]; then
+  echo "Clearing build cache ($TMP_DIR and $OUT_DIR)..."
+  rm -rf "$TMP_DIR" "$OUT_DIR"
+fi
+
 mkdir -p "$IMG_DIR" "$TMP_DIR" "$OUT_DIR"
 
 echo "=== STEP 1/4: Download 30 images from higgsfield.ai ==="
