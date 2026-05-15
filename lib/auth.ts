@@ -47,6 +47,10 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
 
 /** Effective tier — falls back to free if trial expired without subscription. */
 export function effectiveTier(profile: Profile | null): TierId {
+  // Solo-owner / dev escape hatch. Set BYPASS_PAYWALL=true to unlock every
+  // tier limit without configuring Stripe. Intended for the app owner using
+  // the product themselves, NOT for a public deploy.
+  if (process.env.BYPASS_PAYWALL === 'true') return 'agency';
   if (!profile) return 'free';
   return profile.tier;
 }
@@ -57,6 +61,9 @@ export function checkTierLimit(
   action: 'newWorkbook' | 'generateIdea' | 'longScript' | 'videoPrompts' | 'visionImage',
   current: { activeWorkbooks?: number; ideasThisMonth?: number; visionImagesAttached?: number; durationMin?: number },
 ): { ok: true } | { ok: false; reason: string } {
+  // Bypass — see effectiveTier() above.
+  if (process.env.BYPASS_PAYWALL === 'true') return { ok: true };
+
   const limits = PRICING_TIERS[tier].limits as {
     activeWorkbooks: number;
     ideasPerMonth: number;
