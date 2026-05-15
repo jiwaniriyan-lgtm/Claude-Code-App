@@ -33,7 +33,7 @@ if [[ "$MODE" == "elevenlabs" ]]; then
     echo "    ./rebuild_all.sh --mac"
     exit 1
   fi
-  ./regen_voice_elevenlabs.sh
+  ./regen_voice_elevenlabs.py
 else
   ./regen_voice_mac.sh "${MAC_VOICE:-Tom (Premium)}"
 fi
