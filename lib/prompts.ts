@@ -273,7 +273,15 @@ export function buildIdeaPrompt(setupData: SetupData, count: number): string {
     lines.push(`The user wants to model their YouTube channel after: ${setupData.channelUrl}`);
     if (setupData.niche) lines.push(`Niche focus: ${setupData.niche}`);
   } else {
-    lines.push(`Niche: ${setupData.niche}`);
+    // "Own ideas" path — prefer the two free-form boxes if present.
+    if (setupData.ownTopic) {
+      lines.push(`What kind of videos the user wants to make:\n"""\n${setupData.ownTopic.slice(0, 1500)}\n"""`);
+    } else if (setupData.niche) {
+      lines.push(`Niche: ${setupData.niche}`);
+    }
+    if (setupData.ownNotes && setupData.ownNotes.trim()) {
+      lines.push(`Additional context the user provided:\n"""\n${setupData.ownNotes.slice(0, 6000)}\n"""`);
+    }
   }
   if (transcripts.length) {
     lines.push(`\n${transcripts.length} reference transcript(s) showing the style they want:`);

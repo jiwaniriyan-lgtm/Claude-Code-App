@@ -26,6 +26,14 @@ export type SetupData = {
   thumbnailImages: string[];  // base64 data URLs
   duration: string;
   notes: string;
+  /**
+   * Two free-form text boxes used by the "Have My Own Ideas" mode.
+   *   • ownTopic — what kind of videos the user wants to make (niche + description).
+   *   • ownNotes — paste-anything box (existing scripts, raw thoughts, examples).
+   * Optional so the clone path stays untouched.
+   */
+  ownTopic?: string;
+  ownNotes?: string;
 };
 
 export type StateKind =

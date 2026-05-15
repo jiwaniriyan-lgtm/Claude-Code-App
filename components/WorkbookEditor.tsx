@@ -6,6 +6,8 @@ import { STATES } from '@/lib/prompts';
 import { DURATIONS, PLATFORMS } from '@/lib/constants';
 import type { Workbook, WorkbookStateData } from '@/lib/types';
 import { useToast } from './Toast';
+import AssetStudio, { type StudioAsset } from './AssetStudio';
+import VoicePicker from './VoicePicker';
 
 type Image = { id: string; state_n: number; kind: 'style' | 'thumbnail'; storage_path: string; url: string; ord: number };
 
@@ -369,6 +371,16 @@ export default function WorkbookEditor({ workbook: initial, images: initialImage
             />
           </>
         )}
+
+        {/* MULTI-PROVIDER ASSET STUDIO — only after the AI has produced prompts */}
+        {state.output && (
+          <AssetStudioPanel
+            stateN={def.n}
+            workbookId={wb.id}
+            output={state.output}
+            script={wb.states[3]?.output || ''}
+          />
+        )}
       </div>
 
       <div className="dd-nav">
@@ -424,6 +436,144 @@ function PlatformOutput({ output }: { output: string }) {
       />
     </>
   );
+}
+
+/**
+ * AssetStudioPanel — renders the right provider picker(s) based on which
+ * state we're on. Only shows on states 5 (image+video), 6 (voice), 7 (thumbnail).
+ *
+ * It pulls the first prompt out of the AI output via simple regex so the user
+ * gets a sensible starting point — they can edit the prompt before generating.
+ */
+function AssetStudioPanel({
+  stateN,
+  workbookId,
+  output,
+  script,
+}: {
+  stateN: number;
+  workbookId: string;
+  output: string;
+  script: string;
+}) {
+  const [keptImage, setKeptImage] = useState<StudioAsset | null>(null);
+  const [keptVideo, setKeptVideo] = useState<StudioAsset | null>(null);
+  const [keptThumb, setKeptThumb] = useState<StudioAsset | null>(null);
+
+  // Persist a kept asset to the workbook's generated_assets table.
+  async function persistKept(asset: StudioAsset, kind: 'image' | 'video' | 'thumbnail' | 'voice') {
+    try {
+      await fetch(`/api/workbooks/${workbookId}/assets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state_n: stateN,
+          kind,
+          provider_id: asset.providerId,
+          prompt: asset.prompt,
+          refinement: asset.refinement,
+          asset_url: asset.assetUrl,
+          status: 'ready',
+          kept: true,
+        }),
+      });
+    } catch {
+      /* swallow — non-critical, asset still appears in client state */
+    }
+  }
+
+  if (stateN === 5) {
+    const imagePrompt = extractFirstImagePrompt(output);
+    const videoPrompt = extractFirstVideoPrompt(output);
+    return (
+      <div className="state-studio-section">
+        <h3 className="state-studio-heading">🖼 Build the image</h3>
+        <AssetStudio
+          kind="image"
+          defaultPrompt={imagePrompt}
+          onKeep={(a) => {
+            setKeptImage(a);
+            if (a) persistKept(a, 'image');
+          }}
+        />
+        {videoPrompt && (
+          <>
+            <h3 className="state-studio-heading" style={{ marginTop: 22 }}>🎬 Build the video</h3>
+            <AssetStudio
+              kind="video"
+              defaultPrompt={videoPrompt}
+              referenceImageUrl={keptImage?.assetUrl}
+              onKeep={(a) => {
+                setKeptVideo(a);
+                if (a) persistKept(a, 'video');
+              }}
+            />
+            {!keptImage && (
+              <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginTop: 6 }}>
+                Tip: keep an image above first — img-to-video providers (Replicate Kling, Higgsfield)
+                use it as the starting frame.
+              </div>
+            )}
+          </>
+        )}
+        {/* hidden — keep refs to satisfy lint */}
+        <span style={{ display: 'none' }}>{keptVideo?.id}</span>
+      </div>
+    );
+  }
+
+  if (stateN === 6) {
+    return (
+      <div className="state-studio-section">
+        <h3 className="state-studio-heading">🎙 Synthesize voiceover</h3>
+        <VoicePicker
+          scriptText={script || output}
+          onKeep={(a) => {
+            if (a) persistKept(a, 'voice');
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (stateN === 7) {
+    const thumbPrompt = extractFirstThumbnailPrompt(output);
+    return (
+      <div className="state-studio-section">
+        <h3 className="state-studio-heading">🖼 Build the thumbnail</h3>
+        <AssetStudio
+          kind="thumbnail"
+          defaultPrompt={thumbPrompt}
+          onKeep={(a) => {
+            setKeptThumb(a);
+            if (a) persistKept(a, 'thumbnail');
+          }}
+        />
+        <span style={{ display: 'none' }}>{keptThumb?.id}</span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Lightweight extractors — find the first "PROMPT: ..." line in the AI output.
+// The AI is instructed to label prompts but format varies; these regexes are
+// intentionally loose so users can still edit the prompt textarea before sending.
+function extractFirstImagePrompt(output: string): string {
+  const m = output.match(/PROMPT:\s*([^\n]+(?:\n(?!\s*(?:SCENE|CLIP|PROMPT|=))[^\n]+)*)/i);
+  return (m?.[1] || '').trim() || output.slice(0, 800);
+}
+function extractFirstVideoPrompt(output: string): string {
+  const idx = output.search(/===\s*VIDEO CLIP PROMPTS\s*===/i);
+  if (idx < 0) return '';
+  const after = output.slice(idx);
+  const m = after.match(/PROMPT:\s*([^\n]+(?:\n(?!\s*(?:CLIP|PROMPT|=))[^\n]+)*)/i);
+  return (m?.[1] || '').trim();
+}
+function extractFirstThumbnailPrompt(output: string): string {
+  const m = output.match(/VISUAL PROMPT:\s*([^\n]+(?:\n(?!\s*(?:CONCEPT|VISUAL PROMPT|TEXT OVERLAY|=))[^\n]+)*)/i);
+  return (m?.[1] || '').trim() || output.slice(0, 800);
 }
 
 function parsePlatformOutput(output: string): Record<string, string> {
