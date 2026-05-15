@@ -20,10 +20,41 @@ USAGE:
 
 import json
 import os
+import ssl
+import subprocess
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+
+def get_ssl_context() -> ssl.SSLContext:
+    """Build an SSL context that works on macOS even when Python's bundled
+    CA bundle isn't installed. Tries certifi first; auto-installs it if
+    missing; falls back to the macOS Install Certificates command path."""
+    try:
+        import certifi  # type: ignore
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        pass
+
+    print("  (one-time setup: installing certifi for SSL...)")
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet", "--user", "certifi"]
+        )
+        import certifi  # type: ignore
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception as exc:
+        print(f"  ❌ could not install certifi automatically: {exc}")
+        print()
+        print("  Fix manually with ONE of:")
+        print(f"    1. {sys.executable} -m pip install --user certifi")
+        print("    2. /Applications/Python\\ 3.*/Install\\ Certificates.command")
+        sys.exit(1)
+
+
+SSL_CONTEXT = get_ssl_context()
 
 API_KEY = os.environ.get("ELEVEN_API_KEY", "").strip()
 VOICE_ID = os.environ.get("ELEVEN_VOICE_ID", "nzFihrBIvB34imQBuxub").strip()
@@ -129,7 +160,7 @@ for n, text in SCENES.items():
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=120, context=SSL_CONTEXT) as resp:
             audio_bytes = resp.read()
         if len(audio_bytes) < 1000:
             print(f"❌ response too small ({len(audio_bytes)} bytes)")
