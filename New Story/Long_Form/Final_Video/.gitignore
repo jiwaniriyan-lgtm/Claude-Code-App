@@ -2,3 +2,7 @@
 images/
 output/
 _build_tmp/
+
+# Python bytecode cache
+build_scripts/__pycache__/
+*.pyc
