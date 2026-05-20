@@ -7,6 +7,9 @@ node_modules/
 .next/
 out/
 build/
+
+# worker build output
+worker/dist/
 *.tsbuildinfo
 next-env.d.ts
 

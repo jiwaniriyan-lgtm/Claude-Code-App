@@ -57,6 +57,10 @@ export function isAdmin(email: string | null | undefined): boolean {
 
 /** Effective tier — admins get top tier; otherwise the profile's tier (or free). */
 export function effectiveTier(profile: Profile | null): TierId {
+  // Solo-owner / dev escape hatch. Set BYPASS_PAYWALL=true to unlock every
+  // tier limit without configuring Stripe. Intended for the app owner using
+  // the product themselves, NOT for a public deploy.
+  if (process.env.BYPASS_PAYWALL === 'true') return 'agency';
   if (!profile) return 'free';
   if (isAdmin(profile.email)) return 'agency';
   return profile.tier;
@@ -69,7 +73,11 @@ export function checkTierLimit(
   current: { activeWorkbooks?: number; ideasThisMonth?: number; visionImagesAttached?: number; durationMin?: number },
   opts?: { adminEmail?: string | null },
 ): { ok: true } | { ok: false; reason: string } {
+  // Bypass — see effectiveTier() above. BYPASS_PAYWALL is the global flag;
+  // isAdmin() is the per-user allowlist. Either one unlocks all limits.
+  if (process.env.BYPASS_PAYWALL === 'true') return { ok: true };
   if (isAdmin(opts?.adminEmail)) return { ok: true };
+
   const limits = PRICING_TIERS[tier].limits as {
     activeWorkbooks: number;
     ideasPerMonth: number;

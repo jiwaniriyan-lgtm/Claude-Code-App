@@ -382,3 +382,70 @@ footer a:hover { text-decoration: underline; }
   .state-title { font-size: 1.25rem; }
   .step { min-width: 64px; }
 }
+
+/* ─── Provider Picker / Asset Studio ─────────────────────────────────── */
+.provider-picker { margin-top: 16px; }
+.provider-picker-title { font-size: .82rem; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+.provider-picker-hint { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 8px; }
+.provider-picker-loading { color: var(--muted); padding: 12px 0; font-size: .9rem; }
+.provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.provider-card { display: flex; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg2); cursor: pointer; transition: all .15s ease; align-items: flex-start; }
+.provider-card:hover { border-color: var(--purple); background: var(--bg3); }
+.provider-card.selected { border-color: var(--purple); background: rgba(168,85,247,.10); box-shadow: 0 0 0 1px var(--purple); }
+.provider-card.unconfigured { opacity: .75; }
+.provider-card input { margin-top: 3px; accent-color: var(--purple); }
+.provider-card-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.provider-card-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.provider-card-name { font-weight: 700; font-size: .92rem; color: var(--text); }
+.provider-badge { font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; letter-spacing: .5px; white-space: nowrap; }
+.provider-badge.ready { background: rgba(34,197,94,.18); color: var(--green); }
+.provider-badge.needs-key { background: rgba(234,179,8,.15); color: var(--yellow); }
+.provider-badge.external { background: rgba(6,182,212,.15); color: var(--cyan); }
+.provider-badge.research { background: rgba(148,163,184,.15); color: var(--muted); }
+.provider-card-blurb { color: var(--muted); font-size: .8rem; line-height: 1.4; }
+.provider-card-meta { color: var(--muted); font-size: .75rem; }
+.provider-card-link { color: var(--purple); font-size: .75rem; text-decoration: none; }
+.provider-card-link:hover { text-decoration: underline; }
+
+.asset-studio { margin-top: 20px; padding: 18px; border-radius: 14px; border: 1px solid var(--border); background: rgba(13,13,26,.6); display: flex; flex-direction: column; gap: 14px; }
+.asset-studio-prompt { display: flex; flex-direction: column; gap: 6px; }
+.asset-results { margin-top: 8px; }
+.asset-results-title { font-size: .82rem; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+.asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.asset-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.asset-card.kept { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.asset-card.error { border-color: rgba(239,68,68,.4); }
+.asset-card-head { display: flex; justify-content: space-between; align-items: center; }
+.asset-card-provider { font-size: .78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.asset-card-remove { background: transparent; color: var(--muted); border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; }
+.asset-card-remove:hover { color: #f87171; }
+.asset-card-media { aspect-ratio: 16/9; background: var(--bg); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: .85rem; }
+.asset-card-media img, .asset-card-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.asset-card-media audio { width: 100%; padding: 0 8px; }
+.asset-spinner { color: var(--muted); font-size: .85rem; }
+.asset-error { color: #f87171; font-size: .8rem; padding: 8px; text-align: center; }
+.asset-external { padding: 10px; font-size: .8rem; color: var(--muted); text-align: center; }
+.asset-external p { margin-bottom: 8px; white-space: pre-line; }
+.asset-card-refinement { font-size: .75rem; color: var(--cyan); font-style: italic; }
+.asset-keep-btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-weight: 600; font-size: .82rem; cursor: pointer; font-family: inherit; transition: all .15s; }
+.asset-keep-btn:hover { border-color: var(--green); color: var(--green); }
+.asset-keep-btn.kept { background: rgba(34,197,94,.15); border-color: var(--green); color: var(--green); }
+
+/* ─── Voice Picker ───────────────────────────────────────────────────── */
+.voice-picker { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
+.voice-grid-title { font-size: .82rem; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+.voice-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; max-height: 460px; overflow-y: auto; padding-right: 4px; }
+.voice-card { display: flex; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg2); cursor: pointer; transition: all .15s; align-items: flex-start; }
+.voice-card:hover { border-color: var(--purple); }
+.voice-card.selected { border-color: var(--purple); background: rgba(168,85,247,.10); }
+.voice-card input { margin-top: 3px; accent-color: var(--purple); }
+.voice-card-body { flex: 1; min-width: 0; }
+.voice-card-name { font-weight: 700; color: var(--text); display: flex; justify-content: space-between; align-items: center; }
+.voice-card-provider { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+.voice-card-desc { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.voice-studio { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.voice-studio-banner { font-size: .85rem; color: var(--muted); padding: 8px 12px; background: var(--bg2); border-radius: 8px; }
+.voice-studio-hint { font-size: .75rem; color: var(--muted); font-style: italic; }
+
+.state-studio-section { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
+.state-studio-heading { font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: 10px; }

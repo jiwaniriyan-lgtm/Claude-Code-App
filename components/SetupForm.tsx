@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { compressImage } from '@/lib/imageCompress';
-import { NICHES, DURATIONS } from '@/lib/constants';
+import { DURATIONS } from '@/lib/constants';
 import { useToast } from './Toast';
 import IdeaCard from './IdeaCard';
 import type { Idea } from '@/lib/types';
@@ -21,6 +21,9 @@ export default function SetupForm() {
   const [thumbImages, setThumbImages] = useState<StagedImage[]>([]);
   const [duration, setDuration] = useState('10');
   const [notes, setNotes] = useState('');
+  // "Have my own idea" mode — two free-form boxes instead of niche/uploads
+  const [ownTopic, setOwnTopic] = useState('');
+  const [ownNotes, setOwnNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
 
@@ -62,24 +65,29 @@ export default function SetupForm() {
       showToast('Paste the YouTube channel URL or @handle', 'error');
       return;
     }
-    if (mode === 'own' && !niche.trim()) {
-      showToast('Enter your niche', 'error');
+    if (mode === 'own' && !ownTopic.trim()) {
+      showToast('Tell me what kind of videos you want to make', 'error');
       return;
     }
 
     setLoading(true);
     setIdeas([]);
 
-    // Convert staged images to data URLs for the request (counts only — no upload here)
+    // For "own" mode we send the two free-form boxes and derive niche from
+    // the first line of the topic box. Clone mode still sends transcripts +
+    // images so the rich research path stays intact.
+    const derivedNiche = mode === 'own' ? ownTopic.split('\n')[0].slice(0, 60) : niche;
     const setupData = {
       mode,
       channelUrl,
-      niche,
-      transcripts,
-      styleImages: styleImages.map((s) => s.dataUrl),
-      thumbnailImages: thumbImages.map((s) => s.dataUrl),
+      niche: derivedNiche,
+      transcripts: mode === 'clone' ? transcripts : [],
+      styleImages: mode === 'clone' ? styleImages.map((s) => s.dataUrl) : [],
+      thumbnailImages: mode === 'clone' ? thumbImages.map((s) => s.dataUrl) : [],
       duration,
-      notes,
+      notes: mode === 'own' ? ownNotes : notes,
+      ownTopic: mode === 'own' ? ownTopic : undefined,
+      ownNotes: mode === 'own' ? ownNotes : undefined,
     };
 
     const res = await fetch('/api/ideas/generate', {
@@ -99,7 +107,10 @@ export default function SetupForm() {
     showToast(`Generated ${list.length} ideas!`, 'success');
   }
 
-  const labelNiche = mode === 'clone' ? niche || `clone of ${channelUrl}` : niche;
+  const labelNiche =
+    mode === 'clone'
+      ? niche || `clone of ${channelUrl}`
+      : ownTopic.split('\n')[0].slice(0, 60) || niche;
 
   return (
     <>
@@ -132,30 +143,50 @@ export default function SetupForm() {
 
           {mode === 'own' && (
             <>
-              <div className="section-label">Pick your niche</div>
-              <div className="niches">
-                {NICHES.map((n) => (
+              <div className="section-label">What kind of videos do you want to make?</div>
+              <textarea
+                className="dd-textarea"
+                style={{ minHeight: 80, marginBottom: 14 }}
+                placeholder="e.g. AI productivity tutorials for solopreneurs. Tone: high-energy, practical. Length 8-12 min. Target: indie hackers."
+                value={ownTopic}
+                onChange={(e) => setOwnTopic(e.target.value)}
+                maxLength={1200}
+              />
+              <div className="section-label">Paste anything else (scripts, ideas, examples, links)</div>
+              <textarea
+                className="dd-textarea"
+                style={{ minHeight: 120, marginBottom: 4 }}
+                placeholder="Paste raw notes, a rough script, competitor video URLs, bullet ideas — the AI will mine this to generate viral ideas in your style."
+                value={ownNotes}
+                onChange={(e) => setOwnNotes(e.target.value)}
+                maxLength={8000}
+              />
+              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginBottom: 18 }}>
+                No need to upload thumbnails or transcripts in this mode — just describe what you want and paste any references you have.
+              </div>
+
+              <div className="section-label">⏱ Target video length</div>
+              <div className="duration-grid">
+                {DURATIONS.map((d) => (
                   <button
                     type="button"
-                    key={n}
-                    className={`niche-chip ${niche === n ? 'selected' : ''}`}
-                    onClick={() => setNiche(n)}
+                    key={d.v}
+                    className={`duration-chip ${duration === d.v ? 'selected' : ''}`}
+                    onClick={() => setDuration(d.v)}
                   >
-                    {n}
+                    {d.label}
                   </button>
                 ))}
               </div>
-              <input
-                className="setup-input"
-                placeholder="Or type a custom niche..."
-                value={niche}
-                onChange={(e) => setNiche(e.target.value)}
-                maxLength={60}
-              />
+
+              <button type="button" className="gen-btn" onClick={generate} disabled={loading} style={{ marginTop: 18 }}>
+                {loading ? <span className="spinner" /> : null}
+                <span>{loading ? 'Generating...' : '⚡ Generate 10 Viral Ideas'}</span>
+              </button>
             </>
           )}
 
-          {mode && (
+          {mode === 'clone' && (
             <>
               <div className="setup-divider" />
               <div className="section-label">Reference transcripts</div>

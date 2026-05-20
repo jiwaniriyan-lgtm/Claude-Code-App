@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import WorkbookEditor from '@/components/WorkbookEditor';
@@ -57,5 +58,33 @@ export default async function WorkbookEditorPage({ params }: { params: { id: str
     states: enrichedStates,
   };
 
-  return <WorkbookEditor workbook={wbData} images={imagesWithUrls} />;
+  // Show the "Render full video" link once the script + image-prompt states
+  // have outputs to feed the pipeline.
+  const hasScript = (enrichedStates[3]?.output || '').length > 100;
+  const hasImagePrompts = (enrichedStates[4]?.output || '').includes('SCENE');
+
+  return (
+    <>
+      {hasScript && hasImagePrompts && (
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid #222', background: '#0a0a0a', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: '#aaa', fontSize: 13 }}>✨ Ready to render a final video from this workbook.</span>
+          <Link
+            href={`/studio/from-workbook/${params.id}`}
+            style={{
+              background: 'linear-gradient(135deg,#c97a3f,#b56532)',
+              color: 'white',
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: 13,
+              textDecoration: 'none',
+            }}
+          >
+            Render full video →
+          </Link>
+        </div>
+      )}
+      <WorkbookEditor workbook={wbData} images={imagesWithUrls} />
+    </>
+  );
 }

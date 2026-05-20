@@ -16,6 +16,8 @@ export default async function Nav() {
             <Link href="/generate" className="nav-btn">Generate</Link>
             <Link href="/history" className="nav-btn">History</Link>
             <Link href="/workbooks" className="nav-btn">Workbooks</Link>
+            <Link href="/studio" className="nav-btn">Studio</Link>
+            <Link href="/studio/library" className="nav-btn">Library</Link>
             <Link href="/settings" className="nav-btn">Settings</Link>
             <form action="/api/auth/signout" method="post" style={{ display: 'inline' }}>
               <button type="submit" className="nav-btn">Sign out</button>
