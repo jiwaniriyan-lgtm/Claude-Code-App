@@ -161,6 +161,7 @@ function SingleVoiceStudio({
       <AssetStudio
         kind="voice"
         defaultPrompt={scriptText}
+        voiceId={voice.voice_id}
         onKeep={onKeep}
       />
       <div className="voice-studio-hint">
