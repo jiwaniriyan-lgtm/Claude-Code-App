@@ -140,7 +140,12 @@ function ImagePanel() {
         body: JSON.stringify({ prompt, aspectRatio: aspect }),
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      if (!res.ok) {
+        const detail = Array.isArray(j.issues) && j.issues.length > 0
+          ? j.issues.map((i: { path?: (string | number)[]; message: string }) => `${(i.path ?? []).join('.') || 'body'}: ${i.message}`).join('; ')
+          : null;
+        throw new Error(detail ? `${j.error}: ${detail}` : j.error || `HTTP ${res.status}`);
+      }
       pollJob(j.job_id, setJob).catch((e) => setErr(String(e)));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));

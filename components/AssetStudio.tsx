@@ -42,6 +42,8 @@ type Props = {
   defaultPrompt: string;
   /** For video: optional reference image URL (img2video) */
   referenceImageUrl?: string;
+  /** For voice: voice id selected by the parent picker */
+  voiceId?: string;
   /** Notified whenever the kept selection changes */
   onKeep?: (asset: StudioAsset | null) => void;
   /** Optional aspect-ratio default */
@@ -52,6 +54,7 @@ export default function AssetStudio({
   kind,
   defaultPrompt,
   referenceImageUrl,
+  voiceId,
   onKeep,
   aspectRatio = '16:9',
 }: Props) {
@@ -150,6 +153,7 @@ export default function AssetStudio({
           prompt: finalPrompt,
           referenceImageUrl,
           aspectRatio,
+          voiceId,
         }),
       });
       const json = (await res.json()) as { result: GenerateResult };

@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const Body = z.object({
-  prompt: z.string().min(1).max(2000),
+  prompt: z.string().min(1).max(4000),
   aspectRatio: z.enum(['1:1', '16:9', '9:16', '4:3']).default('16:9'),
   workbookId: z.string().uuid().optional(),
 });
