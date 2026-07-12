@@ -189,7 +189,7 @@
    Leave blank to just deep-link (still fully usable while you get approved).
 ============================================================================ */
 const AFFILIATE = {
-  travelpayoutsMarker: "549591",   // your Travelpayouts marker (Aviasales/Hotellook/rentals)
+  travelpayoutsMarker: "750159",   // your Travelpayouts marker (from init_marker on verification)
   bookingAid:          "",   // e.g. "304142"  (Booking.com affiliate id)
   agodaCid:            "",   // e.g. "1234567"
   tripComAllianceId:   "",   // Trip.com allianceid/sid
@@ -253,9 +253,10 @@ function fieldsFor(cat){
    each: {n:name, i:icon, tp:true(=affiliate ready), url:(p)=>string}
    p = {origin,dest,depart,ret,adults}  (strings)
 --------------------------------------------------------*/
-function tpWrap(url){ // wrap through Travelpayouts if marker set (generic redirector)
-  if(!AFFILIATE.travelpayoutsMarker) return url;
-  return `https://tp.media/click?shmarker=${AFFILIATE.travelpayoutsMarker}&promo_id=0&source_type=link&type=click&url=${enc(url)}`;
+function tpWrap(url){
+  // Travelpayouts "Drive" (the script in <head>) auto-monetizes outbound partner
+  // links site-wide, so we keep clean deep links here and let Drive attach the marker.
+  return url;
 }
 const P = {
  flights:[
