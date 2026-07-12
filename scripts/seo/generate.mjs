@@ -42,6 +42,11 @@ const DESTS = [
   { slug: "bangkok",   city: "Bangkok",      country: "Thailand",     iata: "BKK", emoji: "🛺", hook: "street food, temples and rooftop bars" },
   { slug: "rome",      city: "Rome",         country: "Italy",        iata: "FCO", emoji: "🏛️", hook: "the Colosseum, pasta and ancient history" },
 ];
+const bySlug = (s) => DESTS.find((d) => d.slug === s);
+
+/* Featured "Deal of the Week" — change FEATURED weekly (or ask Claude to) to keep it fresh. */
+const FEATURED = "cancun";
+const RUNNERS = ["dubai", "bali", "miami"];
 
 /* ------------------------------------------------------------------ css */
 const CSS = `*{box-sizing:border-box;margin:0;padding:0}
@@ -95,7 +100,10 @@ function chrome(activeCity) {
     header: `<header><div class="wrap nav">
       <a class="logo" href="/">🧳</a>
       <a href="/"><b>AllInOneTrip</b><small>Search every travel site at once</small></a>
-      <a class="home" href="/">← Full search</a>
+      <span style="margin-left:auto;display:flex;gap:16px;align-items:center">
+        <a href="/deal-of-the-week" style="color:var(--accent);font-size:14px;font-weight:700">🔥 Deal of the week</a>
+        <a href="/" style="color:var(--muted);font-size:14px;font-weight:600">Full search →</a>
+      </span>
     </div></header>`,
     footer: `<footer><div class="wrap">
       <div><b>AllInOneTrip</b> · search 30+ travel sites at once</div>
@@ -357,7 +365,7 @@ ${c.footer}
 
 /* ------------------------------------------------------------------ sitemap / robots / 404 */
 function sitemap() {
-  const urls = [`${SITE}/`, `${SITE}/destinations`];
+  const urls = [`${SITE}/`, `${SITE}/deal-of-the-week`, `${SITE}/destinations`];
   DESTS.forEach((d) => { urls.push(`${SITE}/cheap-flights-to-${d.slug}`); urls.push(`${SITE}/hotel-deals-in-${d.slug}`); });
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -402,6 +410,104 @@ function injectHome() {
   writeFileSync(p, html);
 }
 
+/* ------------------------------------------------------------------ deal of the week */
+function cardSvg(d) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0b1120"/><stop offset="0.55" stop-color="#0d1530"/><stop offset="1" stop-color="#0b1120"/>
+  </linearGradient><linearGradient id="a" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <text x="80" y="150" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="#f472b6">🔥 DEAL OF THE WEEK</text>
+  <text x="80" y="290" font-family="Arial,Helvetica,sans-serif" font-size="96" font-weight="800" fill="#ffffff">${esc(d.city)}</text>
+  <text x="80" y="370" font-family="Arial,Helvetica,sans-serif" font-size="40" font-weight="600" fill="#9fb0d0">Cheap flights &amp; hotels — compare 30+ sites</text>
+  <rect x="80" y="430" width="420" height="72" rx="14" fill="url(#a)"/>
+  <text x="290" y="477" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="800" fill="#ffffff">Search deals now →</text>
+  <text x="80" y="580" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="700" fill="#38bdf8">🧳 AllInOneTrip.com</text>
+</svg>`;
+}
+
+function dealPage() {
+  const d = bySlug(FEATURED);
+  const url = `${SITE}/deal-of-the-week`;
+  const title = `This Week's Travel Deal: ${d.city} — Cheap Flights & Hotels | AllInOneTrip`;
+  const desc = `${d.city} is our featured deal this week. Compare cheap flights and hotels to ${d.city} across 30+ sites in one search.`;
+  const shareText = `🔥 This week's travel deal: cheap flights & hotels to ${d.city} — compare 30+ sites in one search!`;
+  const c = chrome(d.city);
+  const runners = RUNNERS.map(bySlug).filter(Boolean).map((r) => `<a class="deal" href="/cheap-flights-to-${r.slug}">
+    <div class="tag">${r.emoji} ${esc(r.country)}</div><h4>${esc(r.city)}</h4>
+    <p>Cheap flights &amp; hotels — compare 30+ sites.</p><div class="go">Explore →</div></a>`).join("");
+  const enc = encodeURIComponent;
+  const share = [
+    ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}`],
+    ["X", `https://twitter.com/intent/tweet?url=${enc(url)}&text=${enc(shareText)}`],
+    ["WhatsApp", `https://wa.me/?text=${enc(shareText + " " + url)}`],
+    ["Telegram", `https://t.me/share/url?url=${enc(url)}&text=${enc(shareText)}`],
+  ].map(([n, u]) => `<a class="chip" href="${u}" target="_blank" rel="noopener">Share on ${n}</a>`).join("");
+  return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}">
+<link rel="canonical" href="${url}">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
+<meta property="og:type" content="website"><meta property="og:url" content="${url}">
+<meta property="og:image" content="${SITE}/deal-of-the-week/card.svg">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${SITE}/deal-of-the-week/card.svg">
+<style>${CSS}
+.hero-deal{text-align:center;padding:30px 0 6px}
+.hero-deal .kick{color:var(--accent);font-weight:800;letter-spacing:1px;font-size:15px}
+.hero-deal h1{font-size:clamp(38px,8vw,72px);margin:6px 0}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:22px 0}
+.cta{padding:15px 26px;border-radius:12px;font-weight:800;font-size:16px}
+.cta.p{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+.cta.s{background:var(--card);border:1px solid var(--line);color:var(--txt)}
+.share{text-align:center;margin:26px 0}</style>
+${DRIVE}
+</head><body>
+${c.header}
+<div class="wrap">
+  <div class="hero-deal">
+    <div class="kick">🔥 DEAL OF THE WEEK</div>
+    <h1>${d.emoji} ${esc(d.city)}</h1>
+    <p class="sub" style="margin:0 auto">This week we're spotlighting <b>${esc(d.city)}, ${esc(d.country)}</b> — famous for ${esc(d.hook)}. Compare cheap flights and hotels across 30+ sites in one click and grab the lowest price before it's gone.</p>
+    <div class="cta-row">
+      <a class="cta p" href="/cheap-flights-to-${d.slug}">✈️ Find cheap flights</a>
+      <a class="cta s" href="/hotel-deals-in-${d.slug}">🏨 Find hotel deals</a>
+    </div>
+  </div>
+
+  <div class="share">
+    <p style="color:var(--muted);font-size:14px;margin-bottom:12px">Know someone planning a trip? Share this deal 👇</p>
+    <div class="chips" style="justify-content:center">${share}
+      <button class="chip" id="copy" style="cursor:pointer;background:var(--card);color:var(--txt)">🔗 Copy link</button>
+    </div>
+  </div>
+
+  <section>
+    <h2>More hot destinations right now</h2>
+    <div class="deals" style="display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${runners}</div>
+  </section>
+
+  <section>
+    <h2>Why book through AllInOneTrip?</h2>
+    <p class="body">One search fires your trip into Google Flights, Skyscanner, Kayak, Booking.com, Expedia, Agoda and more at the same time — so you always see who's cheapest instead of checking ten tabs. It's 100% free to use, and prices are set by the booking sites themselves.</p>
+    <div class="chips"><a class="chip" href="/destinations">🌍 All destinations</a><a class="chip" href="/">🔎 Full travel search</a></div>
+  </section>
+</div>
+${c.footer}
+<script>
+(function(){
+  var b=document.getElementById('copy');
+  if(b) b.onclick=function(){
+    var u=${JSON.stringify(url)};
+    if(navigator.clipboard){navigator.clipboard.writeText(u);b.textContent='✓ Copied!';setTimeout(function(){b.textContent='🔗 Copy link';},1800);}
+  };
+})();
+</script>
+</body></html>`;
+}
+
 /* ------------------------------------------------------------------ run */
 function write(rel, content) {
   const full = join(TRAVEL, rel);
@@ -414,6 +520,8 @@ for (const d of DESTS) {
   written.push(write(`cheap-flights-to-${d.slug}/index.html`, flightPage(d)));
   written.push(write(`hotel-deals-in-${d.slug}/index.html`, hotelPage(d)));
 }
+written.push(write("deal-of-the-week/card.svg", cardSvg(bySlug(FEATURED))));
+written.push(write("deal-of-the-week/index.html", dealPage()));
 written.push(write("destinations/index.html", hubPage()));
 written.push(write("sitemap.xml", sitemap()));
 written.push(write("robots.txt", robots));
