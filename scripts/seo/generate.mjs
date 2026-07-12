@@ -101,6 +101,7 @@ function chrome(activeCity) {
       <a class="logo" href="/">🧳</a>
       <a href="/"><b>AllInOneTrip</b><small>Search every travel site at once</small></a>
       <span style="margin-left:auto;display:flex;gap:16px;align-items:center">
+        <a href="https://flights.allinonetrip.com" style="color:var(--brand);font-size:14px;font-weight:700">✈️ Live prices</a>
         <a href="/deal-of-the-week" style="color:var(--accent);font-size:14px;font-weight:700">🔥 Deal of the week</a>
         <a href="/" style="color:var(--muted);font-size:14px;font-weight:600">Full search →</a>
       </span>
