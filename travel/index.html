@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TripStorm — Search every travel site at once</title>
+<meta name="description" content="Enter your trip once and search 30+ flight, hotel, car, train and vacation-rental sites at the same time. Find last-minute deals across the whole web." />
+<style>
+  :root{
+    --bg:#0b1120; --bg2:#111a2e; --card:#16213e; --card2:#1c2a4a;
+    --line:#243357; --txt:#eef2ff; --muted:#9fb0d0; --brand:#38bdf8; --brand2:#6366f1;
+    --accent:#f472b6; --good:#34d399; --warn:#fbbf24; --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:linear-gradient(160deg,#0b1120,#0d1530 55%,#0b1120);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+  /* Header */
+  header{padding:22px 0 8px;position:sticky;top:0;z-index:20;
+    background:rgba(11,17,32,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:22px;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 6px 20px rgba(56,189,248,.35)}
+  .brand h1{font-size:20px;letter-spacing:.3px}
+  .brand small{display:block;color:var(--muted);font-size:12px;font-weight:400;letter-spacing:.2px}
+
+  /* Hero */
+  .hero{text-align:center;padding:46px 0 22px}
+  .hero h2{font-size:clamp(28px,5vw,44px);line-height:1.1;font-weight:800;
+    background:linear-gradient(120deg,#fff,#a5c9ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--muted);margin-top:14px;font-size:clamp(15px,2vw,18px);max-width:620px;margin-left:auto;margin-right:auto}
+
+  /* Tabs */
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:26px 0 18px}
+  .tab{padding:10px 16px;border-radius:999px;background:var(--card);border:1px solid var(--line);
+    color:var(--muted);cursor:pointer;font-size:14px;font-weight:600;transition:.15s;display:flex;align-items:center;gap:7px}
+  .tab:hover{border-color:var(--brand);color:var(--txt)}
+  .tab.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent;
+    box-shadow:0 6px 18px rgba(99,102,241,.4)}
+
+  /* Search card */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+  .field input,.field select{width:100%;padding:12px 13px;border-radius:11px;border:1px solid var(--line);
+    background:var(--bg2);color:var(--txt);font-size:15px;outline:none;transition:.15s}
+  .field input:focus,.field select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(56,189,248,.18)}
+  .field input::placeholder{color:#5b6c8f}
+  .row-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:18px}
+  .btn{border:none;cursor:pointer;font-weight:700;font-size:15px;padding:14px 22px;border-radius:12px;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;transition:.15s;
+    box-shadow:0 8px 22px rgba(99,102,241,.4)}
+  .btn:hover{transform:translateY(-1px);filter:brightness(1.07)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);box-shadow:none}
+  .btn.ghost:hover{border-color:var(--brand);color:var(--txt)}
+  .hint{color:var(--muted);font-size:13px;flex:1;min-width:180px}
+  .swap{cursor:pointer;user-select:none;color:var(--brand);font-size:12px;font-weight:700}
+
+  /* Results */
+  .results{margin-top:24px}
+  .results h3{font-size:16px;margin-bottom:4px}
+  .results .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .providers{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+  .pcard{display:flex;align-items:center;gap:12px;padding:14px;border-radius:13px;
+    background:var(--card2);border:1px solid var(--line);transition:.15s;cursor:pointer}
+  .pcard:hover{border-color:var(--brand);transform:translateY(-2px);background:#20315a}
+  .pico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;flex-shrink:0;
+    background:linear-gradient(135deg,#1e2a4d,#2a3c6b)}
+  .pcard b{font-size:14px;display:block}
+  .pcard span{font-size:12px;color:var(--muted)}
+  .badge{font-size:10px;font-weight:700;color:#052e26;background:var(--good);padding:2px 7px;border-radius:999px;margin-left:auto}
+
+  /* Sections */
+  section.block{margin:52px 0}
+  .block h3{font-size:22px;font-weight:800;margin-bottom:6px}
+  .block .lead{color:var(--muted);margin-bottom:20px;max-width:680px}
+  .deals{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+  .deal{padding:18px;border-radius:14px;background:var(--card);border:1px solid var(--line);transition:.15s}
+  .deal:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .deal .tag{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.5px;text-transform:uppercase}
+  .deal h4{margin:8px 0 6px;font-size:16px}
+  .deal p{color:var(--muted);font-size:13px;line-height:1.5}
+  .deal .go{margin-top:12px;font-size:13px;font-weight:700;color:var(--brand)}
+
+  .how{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .step{padding:18px;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+  .step .n{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));margin-bottom:10px}
+  .step b{font-size:15px}
+  .step p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.5}
+
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:30px 0 50px;color:var(--muted);font-size:13px;text-align:center}
+  footer a{color:var(--brand)}
+  .disclaimer{max-width:720px;margin:14px auto 0;font-size:12px;line-height:1.6;color:#7688ab}
+
+  @media(max-width:560px){ .hero{padding:30px 0 10px} .panel{padding:16px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap brand">
+    <div class="logo">🌩️</div>
+    <div>
+      <h1>TripStorm</h1>
+      <small>Search every travel site at once</small>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <h2>One search.<br>The whole travel web.</h2>
+    <p>Enter your trip once — TripStorm fires it into 30+ flight, hotel, car, train &amp; vacation-rental sites so you never miss a last-minute deal.</p>
+  </div>
+
+  <!-- Category tabs -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- Search panel -->
+  <div class="panel">
+    <div class="grid" id="fields"></div>
+    <div class="row-actions">
+      <button class="btn" id="searchBtn">🔎 Search all sites</button>
+      <button class="btn ghost" id="openTopBtn">Open top 5 in tabs</button>
+      <span class="hint" id="hint"></span>
+    </div>
+
+    <div class="results" id="results" style="display:none">
+      <h3 id="resTitle">Your search, everywhere 👇</h3>
+      <div class="sub" id="resSub"></div>
+      <div class="providers" id="providers"></div>
+    </div>
+  </div>
+
+  <!-- Last-minute deal hubs -->
+  <section class="block">
+    <h3>🔥 Last-minute deal hubs</h3>
+    <p class="lead">Curated places that publish mistake fares, flash sales and same-day discounts. Bookmark these — they refresh daily.</p>
+    <div class="deals" id="deals"></div>
+  </section>
+
+  <!-- How it works -->
+  <section class="block">
+    <h3>How TripStorm makes you money 💸</h3>
+    <p class="lead">TripStorm is a metasearch launcher. You don't sell tickets — you send travelers to the sites that do, and earn affiliate commission when they book.</p>
+    <div class="how">
+      <div class="step"><div class="n">1</div><b>Traveler searches</b><p>They enter their trip once and hit "Search all sites."</p></div>
+      <div class="step"><div class="n">2</div><b>Links carry your tag</b><p>Every provider link includes your affiliate ID (Travelpayouts, Booking, Expedia…).</p></div>
+      <div class="step"><div class="n">3</div><b>They book anywhere</b><p>You get credited for the booking on the partner site — flights, hotels, cars, all of it.</p></div>
+      <div class="step"><div class="n">4</div><b>You earn commission</b><p>Payouts land monthly. Add SEO content + social to grow the traffic that feeds it.</p></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div><b>TripStorm</b> · a travel metasearch launcher</div>
+    <p class="disclaimer">
+      TripStorm does not sell tickets or process bookings. It opens search results on independent third-party
+      travel sites, which handle all pricing, availability, payment and support. Prices shown on those sites are
+      set by them and may change. TripStorm may earn a commission when you book through partner links, at no extra
+      cost to you. Rename this site, add your own affiliate IDs in the config, and deploy it as your own.
+    </p>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+   AFFILIATE CONFIG  —  put YOUR IDs here to start earning.
+   Sign up (all free): Travelpayouts (travelpayouts.com) → flights+hotels+cars,
+   Booking.com Partner, Expedia/EAN, Trip.com, Agoda partner, Discover Cars.
+   Leave blank to just deep-link (still fully usable while you get approved).
+============================================================================ */
+const AFFILIATE = {
+  travelpayoutsMarker: "",   // e.g. "123456"  (Aviasales/Hotellook/rentals)
+  bookingAid:          "",   // e.g. "304142"  (Booking.com affiliate id)
+  agodaCid:            "",   // e.g. "1234567"
+  tripComAllianceId:   "",   // Trip.com allianceid/sid
+  discoverCarsPmk:     ""    // Discover Cars partner marker
+};
+
+/* ---------------- date helpers ---------------- */
+const pad = n => String(n).padStart(2,"0");
+const today = new Date();
+const iso = d => d; // input already yyyy-mm-dd
+const ymd = d => d;                                   // 2026-08-01
+const yymmdd = d => d ? d.slice(2).replace(/-/g,"") : "";   // 260801
+const ddmm  = d => d ? d.slice(8,10)+d.slice(5,7) : "";     // 0108
+const mdY   = d => d ? d.slice(5,7)+"/"+d.slice(8,10)+"/"+d.slice(0,4) : ""; // 08/01/2026
+const enc = encodeURIComponent;
+
+/* default dates: 30 days out, +7 return */
+const soon = new Date(today.getTime()+30*864e5);
+const back = new Date(today.getTime()+37*864e5);
+const defDepart = `${soon.getFullYear()}-${pad(soon.getMonth()+1)}-${pad(soon.getDate())}`;
+const defReturn = `${back.getFullYear()}-${pad(back.getMonth()+1)}-${pad(back.getDate())}`;
+
+/* ---------------- categories & fields ---------------- */
+const CATS = [
+  {id:"flights", icon:"✈️", label:"Flights"},
+  {id:"hotels",  icon:"🏨", label:"Hotels"},
+  {id:"stays",   icon:"🏝️", label:"Vacation rentals"},
+  {id:"cars",    icon:"🚗", label:"Car rental"},
+  {id:"trains",  icon:"🚆", label:"Trains"},
+];
+
+/* field templates per category */
+function fieldsFor(cat){
+  const g = (id,label,type,val,ph) =>
+    `<div class="field"><label>${label}</label><input id="${id}" type="${type||'text'}" value="${val||''}" placeholder="${ph||''}"></div>`;
+  const guests = `<div class="field"><label>Travelers</label><select id="adults">
+      ${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n} traveler${n>1?'s':''}</option>`).join('')}</select></div>`;
+  if(cat==="flights") return (
+    g("origin","From (city or airport code)","text","","JFK or New York") +
+    `<div class="field"><label>&nbsp;<span class="swap" id="swap">⇅ swap</span></label>
+       <input id="dest" type="text" value="" placeholder="LAX or Los Angeles"></div>` +
+    g("depart","Depart","date",defDepart) +
+    g("ret","Return (blank = one-way)","date",defReturn) + guests );
+  if(cat==="hotels"||cat==="stays") return (
+    g("dest","Destination city","text","","Paris, France") +
+    g("depart","Check-in","date",defDepart) +
+    g("ret","Check-out","date",defReturn) + guests );
+  if(cat==="cars") return (
+    g("dest","Pick-up city or airport","text","","Miami or MIA") +
+    g("depart","Pick-up date","date",defDepart) +
+    g("ret","Drop-off date","date",defReturn) );
+  if(cat==="trains") return (
+    g("origin","From","text","","London") +
+    `<div class="field"><label>&nbsp;<span class="swap" id="swap">⇅ swap</span></label>
+       <input id="dest" type="text" value="" placeholder="Paris"></div>` +
+    g("depart","Travel date","date",defDepart) );
+  return "";
+}
+
+/* ---------------- provider registry ----------------
+   each: {n:name, i:icon, tp:true(=affiliate ready), url:(p)=>string}
+   p = {origin,dest,depart,ret,adults}  (strings)
+--------------------------------------------------------*/
+function tpWrap(url){ // wrap through Travelpayouts if marker set (generic redirector)
+  if(!AFFILIATE.travelpayoutsMarker) return url;
+  return `https://tp.media/click?shmarker=${AFFILIATE.travelpayoutsMarker}&promo_id=0&source_type=link&type=click&url=${enc(url)}`;
+}
+const P = {
+ flights:[
+  {n:"Google Flights",i:"🔵",url:p=>`https://www.google.com/travel/flights?q=${enc(`flights from ${p.origin} to ${p.dest} on ${p.depart}${p.ret?` returning ${p.ret}`:``}`)}`},
+  {n:"Skyscanner",i:"🟦",url:p=>`https://www.skyscanner.net/transport/flights/${p.origin.toLowerCase()}/${p.dest.toLowerCase()}/${yymmdd(p.depart)}${p.ret?'/'+yymmdd(p.ret):''}/?adults=${p.adults}`},
+  {n:"Kayak",i:"🟠",url:p=>`https://www.kayak.com/flights/${p.origin.toUpperCase()}-${p.dest.toUpperCase()}/${p.depart}${p.ret?'/'+p.ret:''}?sort=price_a`},
+  {n:"Momondo",i:"🔴",url:p=>`https://www.momondo.com/flight-search/${p.origin.toUpperCase()}-${p.dest.toUpperCase()}/${p.depart}${p.ret?'/'+p.ret:''}`},
+  {n:"Expedia",i:"🟡",url:p=>`https://www.expedia.com/Flights-Search?mode=search&trip=${p.ret?'roundtrip':'oneway'}&leg1=from:${enc(p.origin)},to:${enc(p.dest)},departure:${mdY(p.depart)}TANYT${p.ret?`&leg2=from:${enc(p.dest)},to:${enc(p.origin)},departure:${mdY(p.ret)}TANYT`:''}&passengers=adults:${p.adults}`},
+  {n:"Kiwi.com",i:"🥝",url:p=>`https://www.kiwi.com/en/search/results/${enc(p.origin)}/${enc(p.dest)}/${p.depart}/${p.ret||'no-return'}`},
+  {n:"Aviasales",i:"🛫",tp:1,url:p=>tpWrap(`https://www.aviasales.com/search/${p.origin.toUpperCase()}${ddmm(p.depart)}${p.dest.toUpperCase()}${p.ret?ddmm(p.ret):''}${p.adults}`)},
+  {n:"Priceline",i:"🎫",url:p=>`https://www.priceline.com/m/fly/search/${p.origin.toUpperCase()}-${p.dest.toUpperCase()}-${p.depart}${p.ret?'/'+p.dest.toUpperCase()+'-'+p.origin.toUpperCase()+'-'+p.ret:''}/`},
+  {n:"CheapOair",i:"💺",url:p=>`https://www.cheapoair.com/air/listing?from=${enc(p.origin)}&to=${enc(p.dest)}&dep=${p.depart}&ret=${p.ret||''}&adt=${p.adults}`},
+  {n:"Trip.com",i:"🌐",url:p=>`https://www.trip.com/flights/${p.origin.toLowerCase()}-to-${p.dest.toLowerCase()}/?dcity=${enc(p.origin)}&acity=${enc(p.dest)}&ddate=${p.depart}&rdate=${p.ret||''}`},
+ ],
+ hotels:[
+  {n:"Booking.com",i:"🔷",url:p=>`https://www.booking.com/searchresults.html?ss=${enc(p.dest)}&checkin=${p.depart}&checkout=${p.ret}&group_adults=${p.adults}${AFFILIATE.bookingAid?`&aid=${AFFILIATE.bookingAid}`:''}`},
+  {n:"Hotels.com",i:"🅷",url:p=>`https://www.hotels.com/Hotel-Search?destination=${enc(p.dest)}&startDate=${p.depart}&endDate=${p.ret}&adults=${p.adults}`},
+  {n:"Expedia",i:"🟡",url:p=>`https://www.expedia.com/Hotel-Search?destination=${enc(p.dest)}&startDate=${p.depart}&endDate=${p.ret}&adults=${p.adults}`},
+  {n:"Agoda",i:"🟣",url:p=>`https://www.agoda.com/search?city=${enc(p.dest)}&checkIn=${p.depart}&checkOut=${p.ret}&adults=${p.adults}${AFFILIATE.agodaCid?`&cid=${AFFILIATE.agodaCid}`:''}`},
+  {n:"Trivago",i:"🟢",url:p=>`https://www.trivago.com/en-US/srl?query=${enc(p.dest)}`},
+  {n:"Google Hotels",i:"🔵",url:p=>`https://www.google.com/travel/hotels/${enc(p.dest)}?checkin=${p.depart}&checkout=${p.ret}`},
+  {n:"Hotellook",i:"🏨",tp:1,url:p=>tpWrap(`https://search.hotellook.com/?destination=${enc(p.dest)}&checkIn=${p.depart}&checkOut=${p.ret}&adults=${p.adults}`)},
+  {n:"Trip.com",i:"🌐",url:p=>`https://www.trip.com/hotels/list?city=${enc(p.dest)}&checkin=${p.depart}&checkout=${p.ret}`},
+ ],
+ stays:[
+  {n:"Airbnb",i:"🏠",url:p=>`https://www.airbnb.com/s/${enc(p.dest)}/homes?checkin=${p.depart}&checkout=${p.ret}&adults=${p.adults}`},
+  {n:"Vrbo",i:"🏡",url:p=>`https://www.vrbo.com/search?destination=${enc(p.dest)}&startDate=${p.depart}&endDate=${p.ret}&adults=${p.adults}`},
+  {n:"Booking Homes",i:"🔷",url:p=>`https://www.booking.com/searchresults.html?ss=${enc(p.dest)}&checkin=${p.depart}&checkout=${p.ret}&group_adults=${p.adults}&nflt=ht_id%3D220${AFFILIATE.bookingAid?`&aid=${AFFILIATE.bookingAid}`:''}`},
+  {n:"HomeToGo",i:"🔎",url:p=>`https://www.hometogo.com/search/?q=${enc(p.dest)}&arrival=${p.depart}&departure=${p.ret}&adults=${p.adults}`},
+  {n:"Expedia Rentals",i:"🟡",url:p=>`https://www.expedia.com/vacation-rentals?destination=${enc(p.dest)}&startDate=${p.depart}&endDate=${p.ret}`},
+  {n:"Plum Guide",i:"⭐",url:p=>`https://www.plumguide.com/search?location=${enc(p.dest)}`},
+ ],
+ cars:[
+  {n:"Rentalcars.com",i:"🚗",url:p=>`https://www.rentalcars.com/SearchResults.do?doSearch=true&location=${enc(p.dest)}&puDay=${p.depart.slice(8,10)}&puMonth=${p.depart.slice(5,7)}&puYear=${p.depart.slice(0,4)}`},
+  {n:"Discover Cars",i:"🔑",url:p=>`https://www.discovercars.com/search-results?pickup=${enc(p.dest)}&pickupDate=${p.depart}&dropoffDate=${p.ret}${AFFILIATE.discoverCarsPmk?`&pmk=${AFFILIATE.discoverCarsPmk}`:''}`},
+  {n:"Kayak Cars",i:"🟠",url:p=>`https://www.kayak.com/cars/${enc(p.dest)}/${p.depart}/${p.ret}`},
+  {n:"Expedia Cars",i:"🟡",url:p=>`https://www.expedia.com/carsearch?locn=${enc(p.dest)}&date1=${p.depart}&date2=${p.ret}`},
+  {n:"Priceline Cars",i:"🎫",url:p=>`https://www.priceline.com/drive/search/s/${enc(p.dest)}/${p.depart}/${p.ret}`},
+  {n:"Turo",i:"🔓",url:p=>`https://turo.com/us/en/search?location=${enc(p.dest)}&startDate=${p.depart}&endDate=${p.ret}`},
+ ],
+ trains:[
+  {n:"Trainline",i:"🚆",url:p=>`https://www.thetrainline.com/book/results?origin=${enc(p.origin)}&destination=${enc(p.dest)}&outwardDate=${p.depart}`},
+  {n:"Omio",i:"🟦",url:p=>`https://www.omio.com/search-frontend/results?departurePosition=${enc(p.origin)}&arrivalPosition=${enc(p.dest)}&departureDate=${p.depart}`},
+  {n:"Rail Europe",i:"🚄",url:p=>`https://www.raileurope.com/en-us/search?origin=${enc(p.origin)}&destination=${enc(p.dest)}&departureDate=${p.depart}`},
+  {n:"Amtrak (US)",i:"🇺🇸",url:p=>`https://www.amtrak.com/tickets/departure.html`},
+  {n:"Rome2Rio",i:"🗺️",url:p=>`https://www.rome2rio.com/s/${enc(p.origin)}/${enc(p.dest)}`},
+ ]
+};
+
+/* ---------------- last-minute deal hubs ---------------- */
+const DEALS = [
+  {tag:"Mistake fares",   t:"Secret Flying",        d:"Error & deeply discounted fares posted daily from airports worldwide.", u:"https://www.secretflying.com/"},
+  {tag:"Cheap flight alerts", t:"Going (Scott's Cheap Flights)", d:"Emailed alerts when fares from your home airport drop hard.", u:"https://www.going.com/"},
+  {tag:"Explore anywhere", t:"Google Flights Explore", d:"Set your budget and dates — see the cheapest places to fly, anywhere.", u:"https://www.google.com/travel/explore"},
+  {tag:"Anywhere search",  t:"Skyscanner Everywhere", d:"Type 'Everywhere' as the destination and sort by cheapest.", u:"https://www.skyscanner.net/"},
+  {tag:"Tonight's hotels", t:"HotelTonight",         d:"Same-day and last-minute hotel rooms at steep discounts.", u:"https://www.hoteltonight.com/"},
+  {tag:"Last-minute",      t:"Lastminute.com",       d:"Flash flight + hotel + package deals for imminent departures.", u:"https://www.lastminute.com/"},
+  {tag:"Flash sales",      t:"Travelzoo Top 20",     d:"A weekly hand-picked list of the best travel deals live now.", u:"https://www.travelzoo.com/"},
+  {tag:"Package deals",    t:"Expedia Last-Minute",  d:"Bundle flight+hotel for extra savings on short-notice trips.", u:"https://www.expedia.com/last-minute-deals"},
+];
+
+/* ---------------- state + render ---------------- */
+let cat = "flights";
+
+function renderTabs(){
+  document.getElementById("tabs").innerHTML = CATS.map(c=>
+    `<div class="tab ${c.id===cat?'active':''}" data-c="${c.id}"><span>${c.icon}</span>${c.label}</div>`).join('');
+  document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{cat=t.dataset.c;render();});
+}
+function renderFields(){
+  document.getElementById("fields").innerHTML = fieldsFor(cat);
+  const sw = document.getElementById("swap");
+  if(sw) sw.onclick=()=>{const a=document.getElementById("origin"),b=document.getElementById("dest");
+    if(a&&b){const t=a.value;a.value=b.value;b.value=t;}};
+  document.getElementById("hint").textContent =
+    cat==="flights" ? "Tip: use 3-letter airport codes (JFK, LHR) for the sharpest results."
+    : cat==="trains" ? "Enter station or city names."
+    : "Enter a city; some sites also accept a landmark or airport code.";
+}
+function collect(){
+  const v=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
+  return {origin:v("origin"),dest:v("dest"),depart:v("depart"),ret:v("ret"),adults:v("adults")||"1"};
+}
+function validate(p){
+  if((cat==="flights"||cat==="trains") && (!p.origin||!p.dest)) return "Please enter both a from and a to.";
+  if((cat==="hotels"||cat==="stays"||cat==="cars") && !p.dest) return "Please enter a destination.";
+  if(!p.depart) return "Please pick a date.";
+  return "";
+}
+function buildLinks(){
+  const p=collect(), err=validate(p);
+  if(err){ document.getElementById("hint").textContent="⚠️ "+err; return null; }
+  return P[cat].map(pr=>({n:pr.n,i:pr.i,tp:pr.tp,href:pr.url(p)}));
+}
+function renderResults(){
+  const links=buildLinks(); if(!links) return;
+  const p=collect();
+  const box=document.getElementById("results");
+  box.style.display="block";
+  const label = (cat==="flights"||cat==="trains")
+    ? `${p.origin.toUpperCase()} → ${p.dest.toUpperCase()} · ${p.depart}${p.ret?' – '+p.ret:''}`
+    : `${p.dest} · ${p.depart}${p.ret?' – '+p.ret:''}`;
+  document.getElementById("resSub").textContent = `${label} — opening on ${links.length} sites. Click any to open in a new tab.`;
+  document.getElementById("providers").innerHTML = links.map(l=>
+    `<a class="pcard" href="${l.href}" target="_blank" rel="noopener nofollow">
+       <div class="pico">${l.i}</div>
+       <div><b>${l.n}</b><span>Open search →</span></div>
+       ${l.tp?'<span class="badge">deal</span>':''}
+     </a>`).join('');
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function openTop(){
+  const links=buildLinks(); if(!links) return;
+  links.slice(0,5).forEach((l,i)=>setTimeout(()=>window.open(l.href,"_blank","noopener"), i*250));
+}
+function renderDeals(){
+  document.getElementById("deals").innerHTML = DEALS.map(d=>
+    `<a class="deal" href="${d.u}" target="_blank" rel="noopener nofollow">
+       <div class="tag">${d.tag}</div><h4>${d.t}</h4><p>${d.d}</p><div class="go">Open →</div></a>`).join('');
+}
+
+function render(){ renderTabs(); renderFields(); document.getElementById("results").style.display="none"; }
+
+document.getElementById("searchBtn").onclick=renderResults;
+document.getElementById("openTopBtn").onclick=openTop;
+renderDeals();
+render();
+</script>
+</body>
+</html>
