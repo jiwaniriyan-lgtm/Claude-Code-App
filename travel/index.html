@@ -139,6 +139,7 @@
   <div class="panel">
     <div class="grid" id="fields"></div>
     <div class="row-actions">
+      <button class="btn" id="liveBtn" style="background:linear-gradient(135deg,#f472b6,#6366f1)">💰 See live prices</button>
       <button class="btn" id="searchBtn">🔎 Search all sites</button>
       <button class="btn ghost" id="openTopBtn">Open top 5 in tabs</button>
       <span class="hint" id="hint"></span>
@@ -402,8 +403,24 @@ function renderDeals(){
        <div class="tag">${d.tag}</div><h4>${d.t}</h4><p>${d.d}</p><div class="go">Open →</div></a>`).join('');
 }
 
-function render(){ renderTabs(); renderFields(); document.getElementById("results").style.display="none"; }
+/* Live ranked prices via the Travelpayouts White Label engine (flights.allinonetrip.com) */
+function livePrices(){
+  const p=collect();
+  if(!p.origin||!p.dest){ document.getElementById("hint").textContent="⚠️ Enter both a from and a to airport code (e.g. ATL, TYS)."; return; }
+  if(!p.depart){ document.getElementById("hint").textContent="⚠️ Pick a departure date."; return; }
+  const o=p.origin.toUpperCase(), d=p.dest.toUpperCase();
+  const url="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
+  window.open(url,"_blank","noopener");
+}
 
+function render(){
+  renderTabs(); renderFields();
+  document.getElementById("results").style.display="none";
+  // "See live prices" only applies to flights (the live-price engine is flight metasearch)
+  document.getElementById("liveBtn").style.display = (cat==="flights") ? "" : "none";
+}
+
+document.getElementById("liveBtn").onclick=livePrices;
 document.getElementById("searchBtn").onclick=renderResults;
 document.getElementById("openTopBtn").onclick=openTop;
 renderDeals();
