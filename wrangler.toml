@@ -1,7 +1,9 @@
 name = "allinonetrip"
+main = "cf-worker/index.js"
 compatibility_date = "2024-11-01"
 
-# Serve the static travel site (travel/index.html) as a Cloudflare static-asset Worker.
+# Serve the static travel site and expose /api/flights (live fares) via the Worker.
 [assets]
 directory = "./travel"
 not_found_handling = "404-page"
+binding = "ASSETS"

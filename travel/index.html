@@ -59,6 +59,15 @@
   .ac-item:hover,.ac-item.on{background:#22345f}
   .ac-item b{color:var(--brand);font-size:12px;min-width:36px;font-weight:700}
   .ac-item .c{margin-left:auto;color:var(--muted);font-size:12px}
+  /* live fare rows */
+  .fare{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:13px;background:var(--card2);
+    border:1px solid var(--line);transition:.15s;grid-column:1/-1}
+  .fare:hover{border-color:var(--brand);transform:translateY(-1px);background:#20315a}
+  .fare .fp{font-size:22px;font-weight:800;color:#fff;min-width:96px}
+  .fare .fi b{font-size:14px;display:block}
+  .fare .fi span{font-size:12px;color:var(--muted)}
+  .fare .fb{margin-left:auto;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand2));padding:9px 16px;border-radius:10px;white-space:nowrap}
+  .loading{padding:20px;color:var(--muted);grid-column:1/-1;text-align:center}
   .row-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:18px}
   .btn{border:none;cursor:pointer;font-weight:700;font-size:15px;padding:14px 22px;border-radius:12px;
     background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;transition:.15s;
@@ -446,14 +455,43 @@ function renderDeals(){
        <div class="tag">${d.tag}</div><h4>${d.t}</h4><p>${d.d}</p><div class="go">Open →</div></a>`).join('');
 }
 
-/* Live ranked prices via the Travelpayouts White Label engine (flights.allinonetrip.com) */
-function livePrices(){
+/* Live ranked fares rendered inline, via our /api/flights endpoint (Travelpayouts data) */
+function fmtTime(s){ return s ? s.slice(0,16).replace("T"," ") : ""; }
+async function livePrices(){
   const p=collect();
-  if(!p.origin||!p.dest){ document.getElementById("hint").textContent="⚠️ Enter both a from and a to airport code (e.g. ATL, TYS)."; return; }
-  if(!p.depart){ document.getElementById("hint").textContent="⚠️ Pick a departure date."; return; }
-  const o=p.origin.toUpperCase(), d=p.dest.toUpperCase();
-  const url="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
-  window.open(url,"_blank","noopener");
+  const o=(p.origin||"").toUpperCase(), d=(p.dest||"").toUpperCase();
+  const hint=document.getElementById("hint");
+  if(!/^[A-Z]{3}$/.test(o)||!/^[A-Z]{3}$/.test(d)){ hint.textContent="⚠️ Pick your From and To from the dropdown list (we need airport codes)."; return; }
+  if(!p.depart){ hint.textContent="⚠️ Pick a departure date."; return; }
+  hint.textContent="";
+  const box=document.getElementById("results"); box.style.display="block";
+  document.getElementById("resTitle").textContent="💰 Live flight prices";
+  const route=o+" → "+d+" · "+p.depart+(p.ret?" – "+p.ret:"");
+  document.getElementById("resSub").textContent=route+" · searching…";
+  const prov=document.getElementById("providers");
+  prov.innerHTML='<div class="loading">Fetching live fares… ✈️</div>';
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+  try{
+    const qs="/api/flights?origin="+o+"&dest="+d+"&depart="+p.depart+(p.ret?"&return="+p.ret:"");
+    const r=await fetch(qs); const j=await r.json();
+    const items=(j&&j.data)||[];
+    if(!items.length){
+      document.getElementById("resSub").textContent=route+" · no cached fares found";
+      prov.innerHTML='<div class="loading">No live fares cached for this exact route/date yet. Try <b>Search all sites</b> below to check in real time, or a nearby date.</div>';
+      return;
+    }
+    document.getElementById("resSub").textContent=route+" · "+items.length+" fares, cheapest first";
+    prov.innerHTML=items.map(t=>{
+      const stops=t.transfers===0?"Nonstop":(t.transfers+" stop"+(t.transfers>1?"s":""));
+      return `<a class="fare" href="${t.book}" target="_blank" rel="noopener nofollow">
+        <div class="fp">$${t.price}</div>
+        <div class="fi"><b>${t.airline} ${t.flight_number}</b><span>${fmtTime(t.departure_at)} · ${stops}</span></div>
+        <div class="fb">Book →</div></a>`;
+    }).join("");
+  }catch(e){
+    document.getElementById("resSub").textContent="Couldn't load live prices";
+    prov.innerHTML='<div class="loading">Couldn\'t reach the price service. Try <b>Search all sites</b> instead.</div>';
+  }
 }
 
 function render(){
