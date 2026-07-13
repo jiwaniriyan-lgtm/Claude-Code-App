@@ -464,38 +464,30 @@ async function livePrices(){
   if(!/^[A-Z]{3}$/.test(o)||!/^[A-Z]{3}$/.test(d)){ hint.textContent="⚠️ Pick your From and To from the dropdown list (we need airport codes)."; return; }
   if(!p.depart){ hint.textContent="⚠️ Pick a departure date."; return; }
   hint.textContent="";
+  const wl="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
   const box=document.getElementById("results"); box.style.display="block";
   document.getElementById("resTitle").textContent="💰 Live flight prices";
   const route=o+" → "+d+" · "+p.depart+(p.ret?" – "+p.ret:"");
-  document.getElementById("resSub").textContent=route+" · searching…";
-  const prov=document.getElementById("providers");
-  prov.innerHTML='<div class="loading">Fetching live fares… ✈️</div>';
-  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+  document.getElementById("resSub").textContent=route+" · searching airlines in real time…";
+  // Embed our own live engine (real-time search, works for every route) right on the page
+  document.getElementById("providers").innerHTML=
+    '<div style="grid-column:1/-1">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+
+        '<span style="color:var(--muted);font-size:13px">Live fares for '+o+' → '+d+' — results load below in a few seconds.</span>'+
+        '<a href="'+wl+'" target="_blank" rel="noopener" style="color:var(--brand);font-size:13px;font-weight:700">Open full screen ↗</a>'+
+      '</div>'+
+      '<iframe src="'+wl+'" title="Live flight results" style="width:100%;height:720px;border:1px solid var(--line);border-radius:12px;background:#fff;display:block"></iframe>'+
+      '<div style="color:var(--muted);font-size:12px;margin-top:8px">Not showing results? <a href="'+wl+'" target="_blank" rel="noopener" style="color:var(--brand)">Open the live search full screen ↗</a></div>'+
+    '</div>';
+  box.scrollIntoView({behavior:"smooth",block:"start"});
+  // Optionally enrich the header with the cheapest cached fare (fast, best-effort)
   try{
-    const qs="/api/flights?origin="+o+"&dest="+d+"&depart="+p.depart+(p.ret?"&return="+p.ret:"");
-    const r=await fetch(qs); const j=await r.json();
+    const j=await (await fetch("/api/flights?origin="+o+"&dest="+d+"&depart="+p.depart+(p.ret?"&return="+p.ret:""))).json();
     const items=(j&&j.data)||[];
-    const wl="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
-    if(!items.length){
-      document.getElementById("resSub").textContent=route+" · run a full live search";
-      prov.innerHTML='<div class="loading">No pre-cached fares for this exact route yet — but you can run a <b>full live search</b> (checks airlines in real time, like the big sites):<br><br>'+
-        '<a class="fb" style="display:inline-block" href="'+wl+'" target="_blank" rel="noopener nofollow">✈️ See live fares for '+o+' → '+d+' →</a></div>';
-      return;
-    }
-    document.getElementById("resSub").textContent=route+" · "+items.length+" fares, cheapest first";
-    prov.innerHTML=items.map(t=>{
-      const stops=t.transfers===0?"Nonstop":(t.transfers+" stop"+(t.transfers>1?"s":""));
-      return `<a class="fare" href="${t.book}" target="_blank" rel="noopener nofollow">
-        <div class="fp">$${t.price}</div>
-        <div class="fi"><b>${t.airline} ${t.flight_number}</b><span>${fmtTime(t.departure_at)} · ${stops}</span></div>
-        <div class="fb">Book →</div></a>`;
-    }).join("") +
-    `<a class="fare" href="${wl}" target="_blank" rel="noopener nofollow" style="justify-content:center;background:transparent">
-       <div class="fb">✈️ See all live fares for ${o} → ${d} →</div></a>`;
-  }catch(e){
-    document.getElementById("resSub").textContent="Couldn't load live prices";
-    prov.innerHTML='<div class="loading">Couldn\'t reach the price service. Try <b>Search all sites</b> instead.</div>';
-  }
+    document.getElementById("resSub").textContent = items.length
+      ? (route+" · from $"+items[0].price+" · live results below")
+      : (route+" · live results below");
+  }catch(e){ document.getElementById("resSub").textContent=route+" · live results below"; }
 }
 
 function render(){
