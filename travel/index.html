@@ -129,8 +129,15 @@
     <p>Enter your trip once — AllInOneTrip fires it into 30+ flight, hotel, car, train &amp; vacation-rental sites so you never miss a last-minute deal.</p>
   </div>
 
-  <!-- Live prices banner -->
-  <a href="https://flights.allinonetrip.com" style="display:block;max-width:660px;margin:0 auto 8px;padding:15px 20px;border-radius:14px;background:linear-gradient(135deg,#f472b6,#6366f1);color:#fff;text-align:center;font-weight:800;font-size:15px;box-shadow:0 10px 26px rgba(99,102,241,.4)">✈️ NEW — See live, ranked flight &amp; hotel prices instantly → flights.allinonetrip.com</a>
+  <!-- Live flight search (Travelpayouts widget: airport autocomplete + live prices) -->
+  <div class="panel" style="margin-bottom:16px">
+    <div style="font-weight:800;font-size:17px;margin-bottom:4px">✈️ Search flights — live prices</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:14px">Type an airport (e.g. <b>ATL</b> → Atlanta), pick your dates, and compare real fares.</div>
+    <div id="tp-flight-widget">
+      <script async src="https://tp.media/content?currency=usd&trs=549591&shmarker=750159&show_hotels=true&powered_by=true&locale=en&searchUrl=flights.allinonetrip.com%2Fsearch&primary_override=%236366f1&color_button=%236366f1&color_icons=%236366f1&secondary=%23FFFFFF&dark=%23262626&light=%23FFFFFF&special=%23C4C4C4&color_focused=%236366f1&border_radius=10&promo_id=4132&campaign_id=100" charset="utf-8"></script>
+    </div>
+    <div style="color:var(--muted);font-size:12px;margin-top:8px">Powered by our live price engine at <a href="https://flights.allinonetrip.com" style="color:var(--brand)">flights.allinonetrip.com</a></div>
+  </div>
 
   <!-- Category tabs -->
   <div class="tabs" id="tabs"></div>
