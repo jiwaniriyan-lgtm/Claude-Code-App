@@ -475,9 +475,11 @@ async function livePrices(){
     const qs="/api/flights?origin="+o+"&dest="+d+"&depart="+p.depart+(p.ret?"&return="+p.ret:"");
     const r=await fetch(qs); const j=await r.json();
     const items=(j&&j.data)||[];
+    const wl="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
     if(!items.length){
-      document.getElementById("resSub").textContent=route+" · no cached fares found";
-      prov.innerHTML='<div class="loading">No live fares cached for this exact route/date yet. Try <b>Search all sites</b> below to check in real time, or a nearby date.</div>';
+      document.getElementById("resSub").textContent=route+" · run a full live search";
+      prov.innerHTML='<div class="loading">No pre-cached fares for this exact route yet — but you can run a <b>full live search</b> (checks airlines in real time, like the big sites):<br><br>'+
+        '<a class="fb" style="display:inline-block" href="'+wl+'" target="_blank" rel="noopener nofollow">✈️ See live fares for '+o+' → '+d+' →</a></div>';
       return;
     }
     document.getElementById("resSub").textContent=route+" · "+items.length+" fares, cheapest first";
@@ -487,7 +489,9 @@ async function livePrices(){
         <div class="fp">$${t.price}</div>
         <div class="fi"><b>${t.airline} ${t.flight_number}</b><span>${fmtTime(t.departure_at)} · ${stops}</span></div>
         <div class="fb">Book →</div></a>`;
-    }).join("");
+    }).join("") +
+    `<a class="fare" href="${wl}" target="_blank" rel="noopener nofollow" style="justify-content:center;background:transparent">
+       <div class="fb">✈️ See all live fares for ${o} → ${d} →</div></a>`;
   }catch(e){
     document.getElementById("resSub").textContent="Couldn't load live prices";
     prov.innerHTML='<div class="loading">Couldn\'t reach the price service. Try <b>Search all sites</b> instead.</div>';
