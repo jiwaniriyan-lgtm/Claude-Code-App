@@ -393,19 +393,23 @@ function renderFields(){
   if(sw) sw.onclick=()=>{const a=document.getElementById("origin"),b=document.getElementById("dest");
     if(a&&b){const tv=a.value;a.value=b.value;b.value=tv; const ti=a.dataset.iata||"";a.dataset.iata=b.dataset.iata||"";b.dataset.iata=ti;}};
   if(cat==="flights"){ attachAC("origin"); attachAC("dest"); }
+  else if(cat==="hotels"||cat==="stays"){ attachAC("dest", true); }
   document.getElementById("hint").textContent =
     cat==="flights" ? "Start typing a city or airport (e.g. Atlanta) and pick it from the list."
+    : (cat==="hotels"||cat==="stays") ? "Start typing a city (e.g. Mumbai) and pick it from the list."
     : cat==="trains" ? "Enter station or city names."
     : "Enter a city; some sites also accept a landmark or airport code.";
 }
 function collect(){
-  // prefer the IATA code chosen from autocomplete; fall back to the typed text
-  const v=id=>{const el=document.getElementById(id);if(!el)return"";return (el.dataset&&el.dataset.iata)?el.dataset.iata:el.value.trim();};
+  // flights/trains use the IATA code from autocomplete; hotels/others use the city name
+  const useCode=(cat==="flights"||cat==="trains");
+  const v=id=>{const el=document.getElementById(id);if(!el)return"";return (useCode&&el.dataset&&el.dataset.iata)?el.dataset.iata:el.value.trim();};
   return {origin:v("origin"),dest:v("dest"),depart:v("depart"),ret:v("ret"),adults:v("adults")||"1"};
 }
 
-/* Airport/city autocomplete via Travelpayouts places API (CORS-enabled) */
-function attachAC(id){
+/* Airport/city autocomplete via Travelpayouts places API (CORS-enabled).
+   cityMode=true shows just the city name (for hotels); otherwise "Name (CODE)". */
+function attachAC(id, cityMode){
   const input=document.getElementById(id); if(!input) return;
   input.setAttribute("autocomplete","off");
   const wrap=input.closest(".field"); if(!wrap) return;
@@ -424,13 +428,14 @@ function attachAC(id){
           if(!Array.isArray(list)||!list.length){ close(); return; }
           box.innerHTML=list.slice(0,7).map(p=>{
             const code=p.code||"", name=p.name||p.city_name||"", country=p.country_name||"";
-            return `<div class="ac-item" data-code="${code}" data-label="${(name+' ('+code+')').replace(/"/g,'')}">
+            return `<div class="ac-item" data-code="${code}" data-name="${name.replace(/"/g,'')}" data-label="${(name+' ('+code+')').replace(/"/g,'')}">
               <b>${code}</b> ${name}<span class="c">${country}</span></div>`;
           }).join("");
           box.style.display="block";
           box.querySelectorAll(".ac-item").forEach(el=>el.addEventListener("mousedown",ev=>{
             ev.preventDefault();
-            input.value=el.dataset.label; input.dataset.iata=el.dataset.code; close();
+            input.value = cityMode ? el.dataset.name : el.dataset.label;
+            input.dataset.iata=el.dataset.code; input.dataset.city=el.dataset.name; close();
           }));
         })
         .catch(()=>close());
@@ -480,7 +485,31 @@ function renderDeals(){
 function fmtTime(s){ return s ? s.slice(0,16).replace("T"," ") : ""; }
 
 /* Live results: embed our own White Label engine (real-time, works for every route) */
+function liveHotels(){
+  const p=collect();
+  const city=p.dest;
+  const destEl=document.getElementById("dest");
+  const code=(destEl&&destEl.dataset.iata)||"";
+  const hint=document.getElementById("hint");
+  if(!city){ hint.textContent="⚠️ Enter a destination city and pick it from the list."; return; }
+  if(!p.depart||!p.ret){ hint.textContent="⚠️ Pick check-in and check-out dates."; return; }
+  hint.textContent="";
+  const url="https://hotels.allinonetrip.com/?destination="+encodeURIComponent(city)+"&checkIn="+p.depart+"&checkOut="+p.ret+"&adults="+p.adults+(code?"&locationId="+code:"");
+  const box=document.getElementById("results"); box.style.display="block";
+  document.getElementById("resTitle").textContent="🏨 Live hotel prices";
+  document.getElementById("resSub").textContent=city+" · "+p.depart+" – "+p.ret+" · live results below";
+  document.getElementById("providers").innerHTML=
+    '<div style="grid-column:1/-1">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+
+        '<span style="color:var(--muted);font-size:13px">Live hotel prices for '+city+' — results load below.</span>'+
+        '<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--brand);font-size:13px;font-weight:700">Open full screen ↗</a>'+
+      '</div>'+
+      '<iframe src="'+url+'" title="Live hotel results" style="width:100%;height:85vh;min-height:680px;border:1px solid var(--line);border-radius:12px;background:#0b1120;display:block"></iframe>'+
+    '</div>';
+  box.scrollIntoView({behavior:"smooth",block:"start"});
+}
 async function livePrices(){
+  if(cat==="hotels") return liveHotels();
   const p=collect();
   const o=(p.origin||"").toUpperCase(), d=(p.dest||"").toUpperCase();
   const hint=document.getElementById("hint");
@@ -506,8 +535,8 @@ async function livePrices(){
 function render(){
   renderTabs(); renderFields();
   document.getElementById("results").style.display="none";
-  // "See live prices" only applies to flights (the live-price engine is flight metasearch)
-  document.getElementById("liveBtn").style.display = (cat==="flights") ? "" : "none";
+  // "See live prices" applies to flights and hotels (both have a live engine)
+  document.getElementById("liveBtn").style.display = (cat==="flights"||cat==="hotels") ? "" : "none";
 }
 
 document.getElementById("liveBtn").onclick=livePrices;
