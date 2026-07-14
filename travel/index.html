@@ -351,12 +351,12 @@ const P = {
   {n:"Plum Guide",i:"⭐",url:p=>`https://www.plumguide.com/search?location=${enc(p.dest)}`},
  ],
  cars:[
-  {n:"Rentalcars.com",i:"🚗",url:p=>`https://www.rentalcars.com/SearchResults.do?doSearch=true&location=${enc(p.dest)}&puDay=${p.depart.slice(8,10)}&puMonth=${p.depart.slice(5,7)}&puYear=${p.depart.slice(0,4)}`},
-  {n:"Discover Cars",i:"🔑",url:p=>`https://www.discovercars.com/search-results?pickup=${enc(p.dest)}&pickupDate=${p.depart}&dropoffDate=${p.ret}${AFFILIATE.discoverCarsPmk?`&pmk=${AFFILIATE.discoverCarsPmk}`:''}`},
   {n:"Kayak Cars",i:"🟠",url:p=>`https://www.kayak.com/cars/${enc(p.dest)}/${p.depart}/${p.ret}`},
-  {n:"Expedia Cars",i:"🟡",url:p=>`https://www.expedia.com/carsearch?locn=${enc(p.dest)}&date1=${p.depart}&date2=${p.ret}`},
-  {n:"Priceline Cars",i:"🎫",url:p=>`https://www.priceline.com/drive/search/s/${enc(p.dest)}/${p.depart}/${p.ret}`},
   {n:"Turo",i:"🔓",url:p=>`https://turo.com/us/en/search?location=${enc(p.dest)}&startDate=${p.depart}&endDate=${p.ret}`},
+  {n:"Rentalcars.com",i:"🚗",url:p=>`https://www.rentalcars.com/`},
+  {n:"Discover Cars",i:"🔑",url:p=>`https://www.discovercars.com/`},
+  {n:"Expedia Cars",i:"🟡",url:p=>`https://www.expedia.com/Cars`},
+  {n:"Priceline Cars",i:"🎫",url:p=>`https://www.priceline.com/drive/`},
  ],
  trains:[
   {n:"Trainline",i:"🚆",url:p=>`https://www.thetrainline.com/book/results?origin=${enc(p.origin)}&destination=${enc(p.dest)}&outwardDate=${p.depart}`},
