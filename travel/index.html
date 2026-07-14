@@ -479,8 +479,7 @@ function renderDeals(){
 /* Live ranked fares rendered inline, via our /api/flights endpoint (Travelpayouts data) */
 function fmtTime(s){ return s ? s.slice(0,16).replace("T"," ") : ""; }
 
-/* ---- custom flight results dashboard (our own UI: filters | results | side) ---- */
-let _fares=[], _flt={sort:"price",stops:"any"}, _route="", _wl="";
+/* Live results: embed our own White Label engine (real-time, works for every route) */
 async function livePrices(){
   const p=collect();
   const o=(p.origin||"").toUpperCase(), d=(p.dest||"").toUpperCase();
@@ -488,62 +487,20 @@ async function livePrices(){
   if(!/^[A-Z]{3}$/.test(o)||!/^[A-Z]{3}$/.test(d)){ hint.textContent="⚠️ Pick your From and To from the dropdown list (we need airport codes)."; return; }
   if(!p.depart){ hint.textContent="⚠️ Pick a departure date."; return; }
   hint.textContent="";
-  _wl="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
-  _route=o+" → "+d+" · "+p.depart+(p.ret?" – "+p.ret:"");
+  const wl="https://flights.allinonetrip.com/search/"+o+ddmm(p.depart)+d+(p.ret?ddmm(p.ret):"")+p.adults;
   const box=document.getElementById("results"); box.style.display="block";
   document.getElementById("resTitle").textContent="💰 Live flight prices";
-  document.getElementById("resSub").textContent=_route+" · searching…";
-  document.getElementById("providers").innerHTML='<div class="loading">Fetching live fares… ✈️</div>';
+  const route=o+" → "+d+" · "+p.depart+(p.ret?" – "+p.ret:"");
+  document.getElementById("resSub").textContent=route+" · live results below";
+  document.getElementById("providers").innerHTML=
+    '<div style="grid-column:1/-1">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+
+        '<span style="color:var(--muted);font-size:13px">Live fares for '+o+' → '+d+' — searching airlines in real time…</span>'+
+        '<a href="'+wl+'" target="_blank" rel="noopener" style="color:var(--brand);font-size:13px;font-weight:700">Open full screen ↗</a>'+
+      '</div>'+
+      '<iframe src="'+wl+'" title="Live flight results" style="width:100%;height:85vh;min-height:680px;border:1px solid var(--line);border-radius:12px;background:#0b1120;display:block"></iframe>'+
+    '</div>';
   box.scrollIntoView({behavior:"smooth",block:"start"});
-  try{
-    const j=await (await fetch("/api/flights?origin="+o+"&dest="+d+"&depart="+p.depart+(p.ret?"&return="+p.ret:""))).json();
-    _fares=(j&&j.data)||[];
-  }catch(e){ _fares=[]; }
-  _flt={sort:"price",stops:"any"};
-  renderDash();
-}
-function _applyFlt(){
-  let a=_fares.slice();
-  if(_flt.stops==="0") a=a.filter(t=>t.transfers===0);
-  else if(_flt.stops==="1") a=a.filter(t=>t.transfers<=1);
-  a.sort((x,y)=> _flt.sort==="duration" ? ((x.duration||1e9)-(y.duration||1e9)) : (x.price-y.price));
-  return a;
-}
-function renderDash(){
-  const items=_applyFlt();
-  const prov=document.getElementById("providers");
-  document.getElementById("resSub").textContent = _fares.length ? (_route+" · "+items.length+" fares") : (_route+" · no cached fares — try a full live search");
-  const filters=`<aside class="rcol rfilters">
-    <div class="grp"><h4>Sort by</h4>
-      <label><input type="radio" name="srt" value="price" ${_flt.sort==="price"?"checked":""}> Cheapest first</label>
-      <label><input type="radio" name="srt" value="duration" ${_flt.sort==="duration"?"checked":""}> Fastest first</label>
-    </div>
-    <div class="grp"><h4>Stops</h4>
-      <label><input type="radio" name="stp" value="any" ${_flt.stops==="any"?"checked":""}> Any</label>
-      <label><input type="radio" name="stp" value="1" ${_flt.stops==="1"?"checked":""}> Up to 1 stop</label>
-      <label><input type="radio" name="stp" value="0" ${_flt.stops==="0"?"checked":""}> Nonstop only</label>
-    </div>
-    <a class="fbook" style="display:block;text-align:center" href="${_wl}" target="_blank" rel="noopener nofollow">Full live search ↗</a>
-  </aside>`;
-  const list = items.length ? items.map(t=>{
-    const stops=t.transfers===0?"Nonstop":(t.transfers+" stop"+(t.transfers>1?"s":""));
-    const dur=t.duration?(Math.floor(t.duration/60)+"h "+(t.duration%60)+"m"):"";
-    return `<a class="fcard" href="${t.book}" target="_blank" rel="noopener nofollow">
-      <div class="fp">$${t.price}</div>
-      <div class="fmeta"><b>${t.airline} ${t.flight_number}</b><span>${fmtTime(t.departure_at)} · ${stops}${dur?" · "+dur:""}</span></div>
-      <div class="fbook">Book →</div></a>`;
-  }).join("") : `<div class="loading">No pre-cached fares for this exact route/date.<br><br><a class="fbook" style="display:inline-block" href="${_wl}" target="_blank" rel="noopener nofollow">✈️ Run a full live search →</a></div>`;
-  const deals = DEALS.slice(0,4).map(x=>`<a class="mini" href="${x.u}" target="_blank" rel="noopener nofollow">🔥 ${x.t}</a>`).join("");
-  const side=`<aside class="rcol rside">
-    <div class="box"><h4>🔥 Last-minute deals</h4>${deals}</div>
-    <div class="box"><h4>🌍 Explore</h4>
-      <a class="mini" href="/destinations">Popular destinations →</a>
-      <a class="mini" href="/deal-of-the-week">Deal of the week →</a>
-    </div>
-  </aside>`;
-  prov.innerHTML=`<div class="rgrid">${filters}<div class="rcol rlist">${list}</div>${side}</div>`;
-  prov.querySelectorAll('input[name="srt"]').forEach(el=>el.onchange=()=>{_flt.sort=el.value;renderDash();});
-  prov.querySelectorAll('input[name="stp"]').forEach(el=>el.onchange=()=>{_flt.stops=el.value;renderDash();});
 }
 
 function render(){
