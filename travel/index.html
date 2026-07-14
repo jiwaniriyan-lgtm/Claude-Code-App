@@ -535,8 +535,8 @@ async function livePrices(){
 function render(){
   renderTabs(); renderFields();
   document.getElementById("results").style.display="none";
-  // "See live prices" applies to flights and hotels (both have a live engine)
-  document.getElementById("liveBtn").style.display = (cat==="flights"||cat==="hotels") ? "" : "none";
+  // "See live prices" (inline live engine) only exists for flights; hotels use the launcher
+  document.getElementById("liveBtn").style.display = (cat==="flights") ? "" : "none";
 }
 
 document.getElementById("liveBtn").onclick=livePrices;
