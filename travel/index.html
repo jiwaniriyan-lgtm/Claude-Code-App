@@ -98,6 +98,12 @@
   .btn.ghost:hover{border-color:var(--brand);color:var(--txt)}
   .hint{color:var(--muted);font-size:13px;flex:1;min-width:180px}
   .swap{cursor:pointer;user-select:none;color:var(--brand);font-size:12px;font-weight:700}
+  /* round-trip / one-way toggle */
+  .triptype{display:flex;gap:8px}
+  .tt{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:999px;border:1px solid var(--line);
+    background:var(--bg2);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+  .tt input{display:none}
+  .tt.on{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent}
 
   /* Results */
   .results{margin-top:24px}
@@ -289,11 +295,15 @@ function fieldsFor(cat){
   const guests = `<div class="field"><label>Travelers</label><select id="adults">
       ${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n} traveler${n>1?'s':''}</option>`).join('')}</select></div>`;
   if(cat==="flights") return (
+    `<div class="field" style="grid-column:1/-1"><div class="triptype">
+       <label class="tt on"><input type="radio" name="tt" value="round" checked> ✈️ Round trip</label>
+       <label class="tt"><input type="radio" name="tt" value="oneway"> → One-way</label>
+     </div></div>` +
     g("origin","From (city or airport code)","text","","JFK or New York") +
     `<div class="field"><label>&nbsp;<span class="swap" id="swap">⇅ swap</span></label>
        <input id="dest" type="text" value="" placeholder="LAX or Los Angeles"></div>` +
     g("depart","Depart","date",defDepart) +
-    g("ret","Return (blank = one-way)","date",defReturn) + guests );
+    g("ret","Return","date",defReturn) + guests );
   if(cat==="hotels"||cat==="stays") return (
     g("dest","Destination city","text","","Paris, France") +
     g("depart","Check-in","date",defDepart) +
@@ -392,7 +402,16 @@ function renderFields(){
   const sw = document.getElementById("swap");
   if(sw) sw.onclick=()=>{const a=document.getElementById("origin"),b=document.getElementById("dest");
     if(a&&b){const tv=a.value;a.value=b.value;b.value=tv; const ti=a.dataset.iata||"";a.dataset.iata=b.dataset.iata||"";b.dataset.iata=ti;}};
-  if(cat==="flights"){ attachAC("origin"); attachAC("dest"); }
+  if(cat==="flights"){
+    attachAC("origin"); attachAC("dest");
+    const ret=document.getElementById("ret");
+    document.querySelectorAll('input[name="tt"]').forEach(r=>r.onchange=()=>{
+      document.querySelectorAll('.tt').forEach(l=>l.classList.remove('on'));
+      r.closest('.tt').classList.add('on');
+      if(r.value==="oneway"){ ret.value=""; ret.disabled=true; ret.style.opacity=.4; }
+      else { ret.disabled=false; ret.style.opacity=1; }
+    });
+  }
   else if(cat==="hotels"||cat==="stays"||cat==="cars"){ attachAC("dest", true); }
   document.getElementById("hint").textContent =
     cat==="flights" ? "Start typing a city or airport (e.g. Atlanta) and pick it from the list."
