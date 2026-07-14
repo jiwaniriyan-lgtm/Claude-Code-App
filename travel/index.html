@@ -393,10 +393,10 @@ function renderFields(){
   if(sw) sw.onclick=()=>{const a=document.getElementById("origin"),b=document.getElementById("dest");
     if(a&&b){const tv=a.value;a.value=b.value;b.value=tv; const ti=a.dataset.iata||"";a.dataset.iata=b.dataset.iata||"";b.dataset.iata=ti;}};
   if(cat==="flights"){ attachAC("origin"); attachAC("dest"); }
-  else if(cat==="hotels"||cat==="stays"){ attachAC("dest", true); }
+  else if(cat==="hotels"||cat==="stays"||cat==="cars"){ attachAC("dest", true); }
   document.getElementById("hint").textContent =
     cat==="flights" ? "Start typing a city or airport (e.g. Atlanta) and pick it from the list."
-    : (cat==="hotels"||cat==="stays") ? "Start typing a city (e.g. Mumbai) and pick it from the list."
+    : (cat==="hotels"||cat==="stays"||cat==="cars") ? "Start typing a city or airport and pick it from the list."
     : cat==="trains" ? "Enter station or city names."
     : "Enter a city; some sites also accept a landmark or airport code.";
 }
