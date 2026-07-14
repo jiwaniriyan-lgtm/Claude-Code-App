@@ -45,8 +45,8 @@ const DESTS = [
 const bySlug = (s) => DESTS.find((d) => d.slug === s);
 
 /* Featured "Deal of the Week" — change FEATURED weekly (or ask Claude to) to keep it fresh. */
-const FEATURED = "cancun";
-const RUNNERS = ["dubai", "bali", "miami"];
+const FEATURED = "bali";
+const RUNNERS = ["cancun", "miami", "las-vegas"];
 
 /* ------------------------------------------------------------------ css */
 const CSS = `*{box-sizing:border-box;margin:0;padding:0}
