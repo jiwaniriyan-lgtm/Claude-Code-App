@@ -143,6 +143,24 @@
   .disclaimer{max-width:720px;margin:14px auto 0;font-size:12px;line-height:1.6;color:#7688ab}
 
   @media(max-width:560px){ .hero{padding:30px 0 10px} .panel{padding:16px} }
+
+  /* live last-minute fares */
+  .livedeals{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+  .ld{display:flex;flex-direction:column;gap:9px;padding:16px;border-radius:14px;position:relative;overflow:hidden;
+      background:linear-gradient(150deg,var(--card2),var(--card));border:1px solid var(--line);transition:transform .15s,border-color .15s}
+  .ld:hover{border-color:var(--brand);transform:translateY(-3px)}
+  .ld-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .ld-route{font-weight:700;font-size:14px;line-height:1.2}
+  .ld-live{font-size:10px;font-weight:800;color:var(--good);letter-spacing:.6px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .ld-live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good);animation:ldpulse 1.8s infinite}
+  @keyframes ldpulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  .ld-price{display:flex;align-items:baseline;gap:6px;font-size:30px;font-weight:800;color:var(--good)}
+  .ld-price small{font-size:12px;font-weight:600;color:var(--muted)}
+  .ld-meta{font-size:12px;color:var(--muted)}
+  .ld-book{margin-top:2px;font-size:13px;font-weight:700;color:var(--brand)}
+  .ld-skel{height:132px;border-radius:14px;border:1px solid var(--line);
+      background:linear-gradient(100deg,var(--card) 30%,var(--card2) 50%,var(--card) 70%);background-size:200% 100%;animation:ldsh 1.2s infinite}
+  @keyframes ldsh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 
 <!-- Travelpayouts verification / tracking (marker 549591) -->
@@ -194,10 +212,12 @@
     </div>
   </div>
 
-  <!-- Last-minute deal hubs -->
+  <!-- Live last-minute fares + curated deal hubs -->
   <section class="block">
-    <h3>🔥 Last-minute deal hubs</h3>
-    <p class="lead">Curated places that publish mistake fares, flash sales and same-day discounts. Bookmark these — they refresh daily.</p>
+    <h3>🔥 Live last-minute deals</h3>
+    <p class="lead">Real fares we're tracking right now — tap any deal to book instantly. Prices update live from 30+ airlines.</p>
+    <div class="livedeals" id="livedeals"></div>
+    <p class="lead" style="margin-top:26px">Plus curated hubs that publish mistake fares, flash sales and same-day discounts daily 👇</p>
     <div class="deals" id="deals"></div>
   </section>
 
@@ -558,10 +578,33 @@ function render(){
   document.getElementById("liveBtn").style.display = (cat==="flights") ? "" : "none";
 }
 
+/* Live last-minute fares strip — real prices from our /api/deals endpoint. */
+async function loadLiveDeals(){
+  const box=document.getElementById("livedeals");
+  if(!box) return;
+  box.innerHTML=Array(4).fill('<div class="ld-skel"></div>').join("");
+  try{
+    const r=await fetch("/api/deals");
+    const j=await r.json();
+    const deals=(j&&j.deals)||[];
+    if(!deals.length){ box.style.display="none"; return; }  // hide section cleanly if no data
+    box.innerHTML=deals.map(x=>
+      '<a class="ld" href="'+x.book+'" target="_blank" rel="noopener nofollow">'+
+        '<div class="ld-top"><span class="ld-route">'+x.emoji+' '+x.from+' → '+x.city+'</span><span class="ld-live">LIVE</span></div>'+
+        '<div class="ld-price"><small>from</small>$'+x.price+'</div>'+
+        '<div class="ld-meta">'+(x.date?x.date+' · ':'')+'one-way · '+x.o+'→'+x.d+'</div>'+
+        '<div class="ld-book">Book this fare →</div>'+
+      '</a>').join("");
+  }catch(e){
+    box.style.display="none";
+  }
+}
+
 document.getElementById("liveBtn").onclick=livePrices;
 document.getElementById("searchBtn").onclick=renderResults;
 document.getElementById("openTopBtn").onclick=openTop;
 renderDeals();
+loadLiveDeals();
 render();
 </script>
 </body>
