@@ -437,7 +437,7 @@ function dealPage() {
   const c = chrome(d.city);
   const runners = RUNNERS.map(bySlug).filter(Boolean).map((r) => `<a class="deal" href="/cheap-flights-to-${r.slug}">
     <div class="tag">${r.emoji} ${esc(r.country)}</div><h4>${esc(r.city)}</h4>
-    <p>Cheap flights &amp; hotels — compare 30+ sites.</p><div class="go">Explore →</div></a>`).join("");
+    <p>Cheap flights &amp; hotels — compare 30+ sites.</p><div class="destprice" data-dest="${r.slug}"></div><div class="go">Explore →</div></a>`).join("");
   const enc = encodeURIComponent;
   const share = [
     ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}`],
@@ -463,7 +463,14 @@ function dealPage() {
 .cta{padding:15px 26px;border-radius:12px;font-weight:800;font-size:16px}
 .cta.p{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
 .cta.s{background:var(--card);border:1px solid var(--line);color:var(--txt)}
-.share{text-align:center;margin:26px 0}</style>
+.share{text-align:center;margin:26px 0}
+.dealprice{display:flex;gap:9px;align-items:center;justify-content:center;margin:16px 0 2px;min-height:26px}
+.destprice{display:flex;gap:7px;align-items:center;margin:8px 0 2px;min-height:20px;font-size:12px;color:var(--muted)}
+.dp-price{color:var(--good);font-weight:800;font-size:20px}
+.dealprice .dp-price{font-size:26px}
+.dp-live{font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--good);display:inline-flex;align-items:center;gap:4px}
+.dp-live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--good);animation:dpp 1.8s infinite}
+@keyframes dpp{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}</style>
 ${DRIVE}
 </head><body>
 ${c.header}
@@ -472,6 +479,7 @@ ${c.header}
     <div class="kick">🔥 DEAL OF THE WEEK</div>
     <h1>${d.emoji} ${esc(d.city)}</h1>
     <p class="sub" style="margin:0 auto">This week we're spotlighting <b>${esc(d.city)}, ${esc(d.country)}</b> — famous for ${esc(d.hook)}. Compare cheap flights and hotels across 30+ sites in one click and grab the lowest price before it's gone.</p>
+    <div class="dealprice" data-dest="${d.slug}"></div>
     <div class="cta-row">
       <a class="cta p" href="/cheap-flights-to-${d.slug}">✈️ Find cheap flights</a>
       <a class="cta s" href="/hotel-deals-in-${d.slug}">🏨 Find hotel deals</a>
@@ -504,6 +512,22 @@ ${c.footer}
     var u=${JSON.stringify(url)};
     if(navigator.clipboard){navigator.clipboard.writeText(u);b.textContent='✓ Copied!';setTimeout(function(){b.textContent='🔗 Copy link';},1800);}
   };
+  function fill(sel, prices){
+    var els=document.querySelectorAll(sel);
+    for(var i=0;i<els.length;i++){
+      var el=els[i], p=prices[el.getAttribute('data-dest')];
+      if(p&&p.price){ el.innerHTML='<span class="dp-price">from $'+p.price+'</span><span class="dp-live">LIVE</span>'; }
+      else{ el.innerHTML=''; }
+    }
+  }
+  function load(){
+    fetch('/api/dest-prices').then(function(r){return r.json();}).then(function(j){
+      var prices=(j&&j.prices)||{};
+      fill('.dealprice[data-dest]', prices);
+      fill('.destprice[data-dest]', prices);
+    }).catch(function(){});
+  }
+  load(); setInterval(load, 600000);
 })();
 </script>
 </body></html>`;
