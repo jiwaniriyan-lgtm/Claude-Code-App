@@ -388,7 +388,7 @@ function injectHome() {
   const p = join(TRAVEL, "index.html");
   let html = readFileSync(p, "utf8");
   const cards = DESTS.map((d) =>
-    `<a class="deal" href="/cheap-flights-to-${d.slug}"><div class="tag">${d.emoji} ${esc(d.country)}</div><h4>${esc(d.city)}</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>`
+    `<a class="deal" href="/cheap-flights-to-${d.slug}"><div class="tag">${d.emoji} ${esc(d.country)}</div><h4>${esc(d.city)}</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="${d.slug}">Checking live price…</div><div class="go">Flights →</div></a>`
   ).join("\n      ");
   const block = `<!-- SEO-DEST-START -->\n      ${cards}\n      <!-- SEO-DEST-END -->`;
   if (html.includes("<!-- SEO-DEST-START -->")) {

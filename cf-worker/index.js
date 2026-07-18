@@ -18,6 +18,9 @@ export default {
     if (url.pathname === "/api/deals") {
       return handleDeals(url, env);
     }
+    if (url.pathname === "/api/dest-prices") {
+      return handleDestPrices(url, env);
+    }
     // Everything else is a static asset.
     return env.ASSETS.fetch(request);
   },
@@ -252,4 +255,65 @@ async function handleDeals(url, env) {
 
   deals.sort((a, b) => a.price - b.price);
   return json({ ok: true, currency: "USD", deals: deals.slice(0, 8) }, 200, 3600);
+}
+
+/* ---------------------------------------------------------------------------
+   Live "from $X" price for each Popular-destination card. Returns the cheapest
+   current one-way fare TO each city (from anywhere), keyed by the card's slug.
+   Cached 30 min; the homepage also re-polls so numbers refresh on their own.
+--------------------------------------------------------------------------- */
+const DEST_CODES = [
+  { slug: "cancun", d: "CUN" }, { slug: "dubai", d: "DXB" }, { slug: "miami", d: "MIA" },
+  { slug: "london", d: "LON" }, { slug: "paris", d: "PAR" }, { slug: "las-vegas", d: "LAS" },
+  { slug: "bali", d: "DPS" }, { slug: "tokyo", d: "TYO" }, { slug: "new-york", d: "NYC" },
+  { slug: "orlando", d: "MCO" }, { slug: "bangkok", d: "BKK" }, { slug: "rome", d: "FCO" },
+];
+
+async function latestToDest(d, token) {
+  const api = new URL("https://api.travelpayouts.com/aviasales/v3/get_latest_prices");
+  api.searchParams.set("currency", "usd");
+  api.searchParams.set("destination", d);
+  api.searchParams.set("period_type", "month");
+  api.searchParams.set("beginning_of_period", ym(0) + "-01");
+  api.searchParams.set("one_way", "true");
+  api.searchParams.set("page", "1");
+  api.searchParams.set("limit", "1");
+  api.searchParams.set("sorting", "price");
+  api.searchParams.set("token", token);
+  const r = await fetch(api.toString(), { headers: { "x-access-token": token } });
+  const p = await r.json();
+  const t = p && Array.isArray(p.data) && p.data[0];
+  if (!t || !t.value) return null;
+  const o = t.origin || "";
+  return {
+    price: Math.round(t.value),
+    o,
+    from: o ? cityOf(o) : "",
+    date: fmtDate(t.depart_date),
+    book: o ? aviasalesSearch(o, d, t.depart_date) : "https://www.aviasales.com/?marker=" + MARKER,
+  };
+}
+
+async function handleDestPrices(url, env) {
+  const token = env.TP_TOKEN;
+  if (!token) return json({ ok: true, currency: "USD", prices: {} }, 200, 600);
+
+  const entries = await Promise.all(
+    DEST_CODES.map(async (x) => {
+      try {
+        let t = await latestToDest(x.d, token);
+        if (!t) {
+          const pf = (await pricesForDates("NYC", x.d, ym(1), token)) || (await pricesForDates("NYC", x.d, ym(0), token));
+          if (pf) t = { price: pf.price, o: "NYC", from: "New York", date: pf.date, book: pf.book };
+        }
+        return t ? [x.slug, t] : null;
+      } catch (e) {
+        return null;
+      }
+    })
+  );
+
+  const prices = {};
+  for (const e of entries.filter(Boolean)) prices[e[0]] = e[1];
+  return json({ ok: true, currency: "USD", prices }, 200, 1800);
 }

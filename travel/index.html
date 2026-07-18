@@ -165,6 +165,13 @@
   .dhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .upd{font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--good);
       background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);padding:3px 8px;border-radius:999px;white-space:nowrap}
+  /* live "from $X" price on Popular-destination cards */
+  .destprice{margin:8px 0 2px;font-size:12px;color:#6b7ca0;min-height:20px;display:flex;align-items:center;gap:7px}
+  .dp-price{color:var(--good);font-weight:800;font-size:16px}
+  .dp-live{font-size:9px;font-weight:800;letter-spacing:.5px;color:var(--good);display:inline-flex;align-items:center;gap:4px}
+  .dp-live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--good);animation:ldpulse 1.8s infinite}
+  .destprice.flash .dp-price{animation:dpflash 1s ease}
+  @keyframes dpflash{0%{color:#fff;text-shadow:0 0 12px rgba(52,211,153,.9)}100%{color:var(--good);text-shadow:none}}
 </style>
 
 <!-- Travelpayouts verification / tracking (marker 549591) -->
@@ -243,18 +250,18 @@
     <p class="lead">Deal pages for the world's most-searched trips — tap through for cheap flights and hotels, or <a href="/destinations" style="color:var(--brand)">see all destinations</a>.</p>
     <div class="deals">
       <!-- SEO-DEST-START -->
-      <a class="deal" href="/cheap-flights-to-cancun"><div class="tag">🏖️ Mexico</div><h4>Cancún</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-dubai"><div class="tag">🕌 UAE</div><h4>Dubai</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-miami"><div class="tag">🌴 USA</div><h4>Miami</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-london"><div class="tag">🎡 UK</div><h4>London</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-paris"><div class="tag">🗼 France</div><h4>Paris</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-las-vegas"><div class="tag">🎰 USA</div><h4>Las Vegas</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-bali"><div class="tag">🌺 Indonesia</div><h4>Bali</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-tokyo"><div class="tag">🏯 Japan</div><h4>Tokyo</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-new-york"><div class="tag">🗽 USA</div><h4>New York</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-orlando"><div class="tag">🎢 USA</div><h4>Orlando</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-bangkok"><div class="tag">🛺 Thailand</div><h4>Bangkok</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
-      <a class="deal" href="/cheap-flights-to-rome"><div class="tag">🏛️ Italy</div><h4>Rome</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-cancun"><div class="tag">🏖️ Mexico</div><h4>Cancún</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="cancun">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-dubai"><div class="tag">🕌 UAE</div><h4>Dubai</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="dubai">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-miami"><div class="tag">🌴 USA</div><h4>Miami</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="miami">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-london"><div class="tag">🎡 UK</div><h4>London</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="london">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-paris"><div class="tag">🗼 France</div><h4>Paris</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="paris">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-las-vegas"><div class="tag">🎰 USA</div><h4>Las Vegas</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="las-vegas">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-bali"><div class="tag">🌺 Indonesia</div><h4>Bali</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="bali">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-tokyo"><div class="tag">🏯 Japan</div><h4>Tokyo</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="tokyo">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-new-york"><div class="tag">🗽 USA</div><h4>New York</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="new-york">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-orlando"><div class="tag">🎢 USA</div><h4>Orlando</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="orlando">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-bangkok"><div class="tag">🛺 Thailand</div><h4>Bangkok</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="bangkok">Checking live price…</div><div class="go">Flights →</div></a>
+      <a class="deal" href="/cheap-flights-to-rome"><div class="tag">🏛️ Italy</div><h4>Rome</h4><p>Cheap flights &amp; hotel deals — compare 30+ sites.</p><div class="destprice" data-dest="rome">Checking live price…</div><div class="go">Flights →</div></a>
       <!-- SEO-DEST-END -->
     </div>
   </section>
@@ -605,11 +612,37 @@ async function loadLiveDeals(){
   }
 }
 
+/* Live "from $X" prices on the Popular-destination cards, auto-refreshing. */
+async function loadDestPrices(){
+  const els=document.querySelectorAll('.destprice[data-dest]');
+  if(!els.length) return;
+  try{
+    const r=await fetch("/api/dest-prices");
+    const j=await r.json();
+    const prices=(j&&j.prices)||{};
+    els.forEach(el=>{
+      const p=prices[el.dataset.dest];
+      if(p&&p.price){
+        const changed = el.dataset.val && el.dataset.val!==String(p.price);
+        el.dataset.val=String(p.price);
+        el.innerHTML='<span class="dp-price">from $'+p.price+'</span><span class="dp-live">LIVE</span>';
+        if(changed){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+      } else if(!el.dataset.val){
+        el.textContent='See live fares →';
+      }
+    });
+  }catch(e){
+    els.forEach(el=>{ if(!el.dataset.val) el.textContent='See live fares →'; });
+  }
+}
+
 document.getElementById("liveBtn").onclick=livePrices;
 document.getElementById("searchBtn").onclick=renderResults;
 document.getElementById("openTopBtn").onclick=openTop;
 renderDeals();
 loadLiveDeals();
+loadDestPrices();
+setInterval(loadDestPrices, 600000);  // auto-refresh destination prices every 10 min
 render();
 </script>
 </body>
