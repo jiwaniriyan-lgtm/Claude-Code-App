@@ -92,31 +92,45 @@ async function handleFlights(url, env) {
 }
 
 /* ---------------------------------------------------------------------------
-   Live "last-minute deals" strip. Pulls the cheapest current fare for a set of
-   popular leisure routes from the Travelpayouts Flight Data API and returns
-   real prices + monetized Aviasales booking links. Cached for 1 hour so the
-   homepage stays fast and we stay well under rate limits. Routes with no
-   cached fare are silently dropped, so the strip never shows an empty card.
+   Live "last-minute deals" strip. Returns real cheapest fares + monetized
+   Aviasales links for popular leisure routes, cached 1 hour.
+
+   Reliability matters more than any single route, so each curated route tries
+   three data sources in order until one returns a price:
+     1) prices_for_dates for next month   (has a ready booking link)
+     2) prices_for_dates for this month
+     3) get_latest_prices for the pair     (broadest cache; link built by us)
+   If the curated list still comes up short, we top it up with the cheapest
+   "fly anywhere" fares out of major hubs via get_latest_prices, so the strip
+   is populated with real numbers instead of hiding.
 --------------------------------------------------------------------------- */
 const DEAL_ROUTES = [
-  { o: "NYC", d: "CUN", city: "Cancún",     emoji: "🏖️", from: "New York" },
-  { o: "MIA", d: "CUN", city: "Cancún",     emoji: "🏖️", from: "Miami" },
-  { o: "LAX", d: "CUN", city: "Cancún",     emoji: "🏖️", from: "Los Angeles" },
-  { o: "CHI", d: "CUN", city: "Cancún",     emoji: "🏖️", from: "Chicago" },
-  { o: "LAX", d: "LAS", city: "Las Vegas",  emoji: "🎰", from: "Los Angeles" },
-  { o: "NYC", d: "LAS", city: "Las Vegas",  emoji: "🎰", from: "New York" },
-  { o: "NYC", d: "MCO", city: "Orlando",    emoji: "🎢", from: "New York" },
-  { o: "NYC", d: "MIA", city: "Miami",      emoji: "🌴", from: "New York" },
-  { o: "LAX", d: "HNL", city: "Honolulu",   emoji: "🌺", from: "Los Angeles" },
-  { o: "NYC", d: "LON", city: "London",     emoji: "🎡", from: "New York" },
-  { o: "NYC", d: "PAR", city: "Paris",      emoji: "🗼", from: "New York" },
-  { o: "MIA", d: "NYC", city: "New York",   emoji: "🗽", from: "Miami" },
+  { o: "NYC", d: "CUN" }, { o: "MIA", d: "CUN" }, { o: "LAX", d: "CUN" }, { o: "CHI", d: "CUN" },
+  { o: "LAX", d: "LAS" }, { o: "NYC", d: "LAS" }, { o: "NYC", d: "MCO" }, { o: "NYC", d: "MIA" },
+  { o: "LAX", d: "HNL" }, { o: "NYC", d: "LON" }, { o: "NYC", d: "PAR" }, { o: "MIA", d: "NYC" },
 ];
+const FILL_ORIGINS = ["NYC", "LAX", "MIA", "CHI"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function nextMonth() {
+// IATA (city or airport) -> friendly city name + emoji for labels.
+const CITY = {
+  NYC: { c: "New York", e: "🗽" }, JFK: { c: "New York", e: "🗽" }, EWR: { c: "New York", e: "🗽" }, LGA: { c: "New York", e: "🗽" },
+  LAX: { c: "Los Angeles", e: "🌴" }, MIA: { c: "Miami", e: "🌴" }, FLL: { c: "Fort Lauderdale", e: "🏖️" }, TPA: { c: "Tampa", e: "🌴" },
+  CHI: { c: "Chicago", e: "🌆" }, ORD: { c: "Chicago", e: "🌆" }, MDW: { c: "Chicago", e: "🌆" },
+  CUN: { c: "Cancún", e: "🏖️" }, LAS: { c: "Las Vegas", e: "🎰" }, MCO: { c: "Orlando", e: "🎢" }, HNL: { c: "Honolulu", e: "🌺" },
+  SJU: { c: "San Juan", e: "🏝️" }, PUJ: { c: "Punta Cana", e: "🏝️" }, MBJ: { c: "Montego Bay", e: "🏝️" }, NAS: { c: "Nassau", e: "🏝️" },
+  LON: { c: "London", e: "🎡" }, LHR: { c: "London", e: "🎡" }, PAR: { c: "Paris", e: "🗼" }, CDG: { c: "Paris", e: "🗼" },
+  DXB: { c: "Dubai", e: "🕌" }, BKK: { c: "Bangkok", e: "🛺" }, CanCUN: { c: "Cancún", e: "🏖️" },
+  SFO: { c: "San Francisco", e: "🌉" }, DEN: { c: "Denver", e: "🏔️" }, ATL: { c: "Atlanta", e: "🍑" }, SEA: { c: "Seattle", e: "🌲" },
+  BOS: { c: "Boston", e: "🎓" }, DFW: { c: "Dallas", e: "🤠" }, IAH: { c: "Houston", e: "🚀" }, PHX: { c: "Phoenix", e: "🌵" },
+  SAN: { c: "San Diego", e: "🏄" }, AUS: { c: "Austin", e: "🎸" }, AUA: { c: "Aruba", e: "🏝️" }, AUH: { c: "Abu Dhabi", e: "🕌" },
+};
+const cityOf = (code) => (CITY[code] && CITY[code].c) || code;
+const emojiOf = (code) => (CITY[code] && CITY[code].e) || "✈️";
+
+function ym(offset) {
   const d = new Date();
-  d.setUTCMonth(d.getUTCMonth() + 1);
+  d.setUTCMonth(d.getUTCMonth() + offset);
   return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0");
 }
 function fmtDate(s) {
@@ -125,49 +139,117 @@ function fmtDate(s) {
   if (p.length < 3) return "";
   return MON[Number(p[1]) - 1] + " " + Number(p[2]);
 }
+function aviasalesSearch(o, d, departYMD) {
+  // path form: /search/{ORIGIN}{DDMM}{DEST}{PAX}
+  const dd = (departYMD || "").slice(8, 10), mm = (departYMD || "").slice(5, 7);
+  const seg = dd && mm ? o + dd + mm + d + "1" : "";
+  return seg ? "https://www.aviasales.com/search/" + seg + "?marker=" + MARKER
+             : "https://www.aviasales.com/?marker=" + MARKER;
+}
+function dealFrom(o, d, price, departYMD, book) {
+  return {
+    from: cityOf(o), city: cityOf(d), emoji: emojiOf(d),
+    o, d, price: Math.round(price), date: fmtDate(departYMD), book,
+  };
+}
+
+async function pricesForDates(o, d, month, token) {
+  const api = new URL("https://api.travelpayouts.com/aviasales/v3/prices_for_dates");
+  api.searchParams.set("origin", o);
+  api.searchParams.set("destination", d);
+  api.searchParams.set("departure_at", month);
+  api.searchParams.set("currency", "usd");
+  api.searchParams.set("sorting", "price");
+  api.searchParams.set("direct", "false");
+  api.searchParams.set("limit", "1");
+  api.searchParams.set("one_way", "true");
+  api.searchParams.set("token", token);
+  const r = await fetch(api.toString(), { headers: { "x-access-token": token } });
+  const p = await r.json();
+  const t = p && Array.isArray(p.data) && p.data[0];
+  if (!t || !t.price) return null;
+  const link = t.link || "";
+  const book = link
+    ? "https://www.aviasales.com" + link + (link.indexOf("?") > -1 ? "&" : "?") + "marker=" + MARKER
+    : aviasalesSearch(o, d, t.departure_at);
+  return dealFrom(o, d, t.price, t.departure_at, book);
+}
+
+async function latestForRoute(o, d, token) {
+  const api = new URL("https://api.travelpayouts.com/aviasales/v3/get_latest_prices");
+  api.searchParams.set("currency", "usd");
+  api.searchParams.set("origin", o);
+  api.searchParams.set("destination", d);
+  api.searchParams.set("period_type", "month");
+  api.searchParams.set("beginning_of_period", ym(0) + "-01");
+  api.searchParams.set("one_way", "true");
+  api.searchParams.set("page", "1");
+  api.searchParams.set("limit", "1");
+  api.searchParams.set("sorting", "price");
+  api.searchParams.set("token", token);
+  const r = await fetch(api.toString(), { headers: { "x-access-token": token } });
+  const p = await r.json();
+  const t = p && Array.isArray(p.data) && p.data[0];
+  if (!t || !t.value) return null;
+  return dealFrom(o, d, t.value, t.depart_date, aviasalesSearch(o, d, t.depart_date));
+}
+
+async function latestFromOrigin(o, token, limit) {
+  const api = new URL("https://api.travelpayouts.com/aviasales/v3/get_latest_prices");
+  api.searchParams.set("currency", "usd");
+  api.searchParams.set("origin", o);
+  api.searchParams.set("period_type", "month");
+  api.searchParams.set("beginning_of_period", ym(0) + "-01");
+  api.searchParams.set("one_way", "true");
+  api.searchParams.set("page", "1");
+  api.searchParams.set("limit", String(limit || 20));
+  api.searchParams.set("sorting", "price");
+  api.searchParams.set("token", token);
+  const r = await fetch(api.toString(), { headers: { "x-access-token": token } });
+  const p = await r.json();
+  const rows = p && Array.isArray(p.data) ? p.data : [];
+  return rows
+    .filter((t) => t && t.value && t.destination && t.destination !== o)
+    .map((t) => dealFrom(o, t.destination, t.value, t.depart_date, aviasalesSearch(o, t.destination, t.depart_date)));
+}
 
 async function handleDeals(url, env) {
   const token = env.TP_TOKEN;
   if (!token) return json({ ok: true, currency: "USD", deals: [] }, 200, 600);
-  const month = nextMonth();
+  const m0 = ym(0), m1 = ym(1);
 
-  const results = await Promise.all(
+  // 1) curated routes with 3-tier fallback
+  const curated = await Promise.all(
     DEAL_ROUTES.map(async (rt) => {
       try {
-        const api = new URL("https://api.travelpayouts.com/aviasales/v3/prices_for_dates");
-        api.searchParams.set("origin", rt.o);
-        api.searchParams.set("destination", rt.d);
-        api.searchParams.set("departure_at", month);
-        api.searchParams.set("currency", "usd");
-        api.searchParams.set("sorting", "price");
-        api.searchParams.set("direct", "false");
-        api.searchParams.set("limit", "1");
-        api.searchParams.set("one_way", "true");
-        api.searchParams.set("token", token);
-        const r = await fetch(api.toString(), { headers: { "x-access-token": token } });
-        const p = await r.json();
-        const t = p && Array.isArray(p.data) && p.data[0];
-        if (!t || !t.price) return null;
-        const link = t.link || "";
-        const book = link
-          ? "https://www.aviasales.com" + link + (link.indexOf("?") > -1 ? "&" : "?") + "marker=" + MARKER
-          : "https://www.aviasales.com/?marker=" + MARKER;
-        return {
-          from: rt.from,
-          city: rt.city,
-          emoji: rt.emoji,
-          o: rt.o,
-          d: rt.d,
-          price: Math.round(t.price),
-          date: fmtDate(t.departure_at),
-          book,
-        };
+        return (
+          (await pricesForDates(rt.o, rt.d, m1, token)) ||
+          (await pricesForDates(rt.o, rt.d, m0, token)) ||
+          (await latestForRoute(rt.o, rt.d, token))
+        );
       } catch (e) {
         return null;
       }
     })
   );
 
-  const deals = results.filter(Boolean).sort((a, b) => a.price - b.price).slice(0, 8);
-  return json({ ok: true, currency: "USD", deals }, 200, 3600);
+  const seen = new Set();
+  const deals = [];
+  for (const x of curated.filter(Boolean)) {
+    const k = x.o + x.d;
+    if (!seen.has(k)) { seen.add(k); deals.push(x); }
+  }
+
+  // 2) top up with cheapest "fly anywhere" fares if we're short
+  if (deals.length < 8) {
+    const fills = await Promise.all(FILL_ORIGINS.map((o) => latestFromOrigin(o, token, 20).catch(() => [])));
+    for (const x of fills.flat().sort((a, b) => a.price - b.price)) {
+      if (deals.length >= 8) break;
+      const k = x.o + x.d;
+      if (!seen.has(k)) { seen.add(k); deals.push(x); }
+    }
+  }
+
+  deals.sort((a, b) => a.price - b.price);
+  return json({ ok: true, currency: "USD", deals: deals.slice(0, 8) }, 200, 3600);
 }

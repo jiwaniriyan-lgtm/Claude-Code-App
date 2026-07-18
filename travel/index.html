@@ -161,6 +161,10 @@
   .ld-skel{height:132px;border-radius:14px;border:1px solid var(--line);
       background:linear-gradient(100deg,var(--card) 30%,var(--card2) 50%,var(--card) 70%);background-size:200% 100%;animation:ldsh 1.2s infinite}
   @keyframes ldsh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  /* "updated daily" freshness badge on curated hub cards */
+  .dhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .upd{font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--good);
+      background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);padding:3px 8px;border-radius:999px;white-space:nowrap}
 </style>
 
 <!-- Travelpayouts verification / tracking (marker 549591) -->
@@ -517,7 +521,8 @@ function openTop(){
 function renderDeals(){
   document.getElementById("deals").innerHTML = DEALS.map(d=>
     `<a class="deal" href="${d.u}" target="_blank" rel="noopener nofollow">
-       <div class="tag">${d.tag}</div><h4>${d.t}</h4><p>${d.d}</p><div class="go">Open →</div></a>`).join('');
+       <div class="dhead"><div class="tag">${d.tag}</div><span class="upd">🔄 Updated daily</span></div>
+       <h4>${d.t}</h4><p>${d.d}</p><div class="go">Open →</div></a>`).join('');
 }
 
 /* Live ranked fares rendered inline, via our /api/flights endpoint (Travelpayouts data) */
