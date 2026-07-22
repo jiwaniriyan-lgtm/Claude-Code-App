@@ -104,6 +104,15 @@
     background:var(--bg2);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
   .tt input{display:none}
   .tt.on{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent}
+  /* package builder checkboxes */
+  .pkgpick{display:flex;flex-wrap:wrap;gap:9px}
+  .pk{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;border:1px solid var(--line);
+    background:var(--bg2);color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;transition:.15s;user-select:none}
+  .pk:hover{border-color:var(--brand);color:var(--txt)}
+  .pk input{display:none}
+  .pk.on{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent}
+  .pkgroup h4{font-size:15px;font-weight:800;margin:0 0 10px;display:flex;align-items:center;gap:8px;
+    padding-bottom:8px;border-bottom:1px solid var(--line)}
 
   /* Results */
   .results{margin-top:24px}
@@ -312,6 +321,7 @@ const defReturn = `${back.getFullYear()}-${pad(back.getMonth()+1)}-${pad(back.ge
 
 /* ---------------- categories & fields ---------------- */
 const CATS = [
+  {id:"package", icon:"📦", label:"Build a package"},
   {id:"flights", icon:"✈️", label:"Flights"},
   {id:"hotels",  icon:"🏨", label:"Hotels"},
   {id:"stays",   icon:"🏝️", label:"Vacation rentals"},
@@ -319,12 +329,36 @@ const CATS = [
   {id:"trains",  icon:"🚆", label:"Trains"},
 ];
 
+/* Package builder — each component maps to a set of partner sites we open. */
+const PKG_COMPONENTS = [
+  {id:"flight",     icon:"✈️", label:"Flights",           def:true},
+  {id:"stay",       icon:"🏨", label:"Stay (hotel or home)", def:true},
+  {id:"car",        icon:"🚗", label:"Car rental",         def:true},
+  {id:"activities", icon:"🎟️", label:"Activities & tours", def:false},
+  {id:"food",       icon:"🍽️", label:"Food & restaurants", def:false},
+  {id:"insurance",  icon:"🛡️", label:"Travel insurance",   def:false},
+  {id:"esim",       icon:"📶", label:"eSIM / data",        def:false},
+  {id:"transfers",  icon:"🚕", label:"Airport transfers",  def:false},
+];
+
 /* field templates per category */
 function fieldsFor(cat){
   const g = (id,label,type,val,ph) =>
     `<div class="field"><label>${label}</label><input id="${id}" type="${type||'text'}" value="${val||''}" placeholder="${ph||''}"></div>`;
   const guests = `<div class="field"><label>Travelers</label><select id="adults">
-      ${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n} traveler${n>1?'s':''}</option>`).join('')}</select></div>`;
+      ${[1,2,3,4,5,6].map(n=>`<option value="${n}"${n===2?' selected':''}>${n} traveler${n>1?'s':''}</option>`).join('')}</select></div>`;
+  if(cat==="package"){
+    const checks = PKG_COMPONENTS.map(c=>
+      `<label class="pk${c.def?' on':''}"><input type="checkbox" value="${c.id}"${c.def?' checked':''}> ${c.icon} ${c.label}</label>`).join('');
+    return (
+      g("dest","Destination city","text","","Cancún, Mexico") +
+      g("origin","Flying from (for flights)","text","","New York / JFK") +
+      g("depart","Start date","date",defDepart) +
+      g("ret","End date","date",defReturn) + guests +
+      `<div class="field" style="grid-column:1/-1">
+         <label>✅ What do you want in your package? (tick all that apply)</label>
+         <div class="pkgpick" id="pkgpick">${checks}</div></div>`);
+  }
   if(cat==="flights") return (
     `<div class="field" style="grid-column:1/-1"><div class="triptype">
        <label class="tt on"><input type="radio" name="tt" value="round" checked> ✈️ Round trip</label>
@@ -421,7 +455,7 @@ const DEALS = [
 ];
 
 /* ---------------- state + render ---------------- */
-let cat = "flights";
+let cat = "package";
 
 function renderTabs(){
   document.getElementById("tabs").innerHTML = CATS.map(c=>
@@ -444,8 +478,15 @@ function renderFields(){
     });
   }
   else if(cat==="hotels"||cat==="stays"||cat==="cars"){ attachAC("dest", true); }
+  else if(cat==="package"){
+    attachAC("dest", true); attachAC("origin");
+    document.querySelectorAll('#pkgpick input').forEach(cb=>cb.onchange=()=>{
+      cb.closest('.pk').classList.toggle('on', cb.checked);
+    });
+  }
   document.getElementById("hint").textContent =
-    cat==="flights" ? "Start typing a city or airport (e.g. Atlanta) and pick it from the list."
+    cat==="package" ? "Pick your city, tick what you want, and hit Build — we open the best site for each part."
+    : cat==="flights" ? "Start typing a city or airport (e.g. Atlanta) and pick it from the list."
     : (cat==="hotels"||cat==="stays"||cat==="cars") ? "Start typing a city or airport and pick it from the list."
     : cat==="trains" ? "Enter station or city names."
     : "Enter a city; some sites also accept a landmark or airport code.";
@@ -504,7 +545,95 @@ function buildLinks(){
   if(err){ document.getElementById("hint").textContent="⚠️ "+err; return null; }
   return P[cat].map(pr=>({n:pr.n,i:pr.i,tp:pr.tp,href:pr.url(p)}));
 }
+/* ---------------- package builder ---------------- */
+function getPkg(){
+  const dEl=document.getElementById("dest"), oEl=document.getElementById("origin");
+  const val=el=>el?el.value.trim():"";
+  return {
+    destCode:(dEl&&dEl.dataset.iata)||"", destName:(dEl&&(dEl.dataset.city||dEl.value.trim()))||"",
+    originCode:(oEl&&oEl.dataset.iata)||"", originName:val(oEl),
+    depart:val(document.getElementById("depart")),
+    ret:val(document.getElementById("ret")),
+    adults:val(document.getElementById("adults"))||"2",
+    picks:[...document.querySelectorAll('#pkgpick input:checked')].map(i=>i.value),
+  };
+}
+function pkgProviders(id, k){
+  const e=encodeURIComponent;
+  const c={origin:k.originCode||k.originName, dest:k.destCode||k.destName, depart:k.depart, ret:k.ret, adults:k.adults};
+  const h={dest:k.destName, depart:k.depart, ret:k.ret, adults:k.adults};
+  const D=k.destName;
+  if(id==="flight")     return P.flights.slice(0,6).map(pr=>({n:pr.n,i:pr.i,tp:pr.tp,href:pr.url(c)}));
+  if(id==="stay")       return P.hotels.slice(0,4).concat(P.stays.slice(0,2)).map(pr=>({n:pr.n,i:pr.i,tp:pr.tp,href:pr.url(h)}));
+  if(id==="car")        return P.cars.map(pr=>({n:pr.n,i:pr.i,tp:pr.tp,href:pr.url(h)}));
+  if(id==="activities") return [
+    {n:"GetYourGuide",i:"🎟️",tp:1,href:`https://www.getyourguide.com/s/?q=${e(D)}`},
+    {n:"Viator",i:"🧭",href:`https://www.viator.com/search/${e(D)}`},
+    {n:"Tiqets",i:"🎫",tp:1,href:`https://www.tiqets.com/en/search?query=${e(D)}`},
+    {n:"Klook",i:"🟠",tp:1,href:`https://www.klook.com/en-US/search/?query=${e(D)}`},
+    {n:"Airbnb Experiences",i:"🎨",href:`https://www.airbnb.com/s/${e(D)}/experiences`},
+  ];
+  if(id==="food") return [
+    {n:"TheFork",i:"🍴",href:`https://www.thefork.com/search?cityName=${e(D)}`},
+    {n:"OpenTable",i:"🍽️",href:`https://www.opentable.com/s?term=${e(D)}`},
+    {n:"Yelp",i:"⭐",href:`https://www.yelp.com/search?find_desc=Restaurants&find_loc=${e(D)}`},
+    {n:"Google Restaurants",i:"🔵",href:`https://www.google.com/search?q=${e('best restaurants in '+D)}`},
+  ];
+  if(id==="insurance") return [
+    {n:"VisitorsCoverage",i:"🛡️",href:`https://www.visitorscoverage.com/`},
+    {n:"SafetyWing",i:"🪽",href:`https://safetywing.com/nomad-insurance`},
+    {n:"World Nomads",i:"🌍",href:`https://www.worldnomads.com/`},
+    {n:"Travelex",i:"➕",href:`https://www.travelexinsurance.com/`},
+  ];
+  if(id==="esim") return [
+    {n:"Airalo",i:"📶",tp:1,href:`https://www.airalo.com/`},
+    {n:"Holafly",i:"📱",href:`https://esim.holafly.com/`},
+    {n:"Saily",i:"🟢",href:`https://saily.com/`},
+  ];
+  if(id==="transfers") return [
+    {n:"Kiwitaxi",i:"🚕",tp:1,href:`https://kiwitaxi.com/`},
+    {n:"Welcome Pickups",i:"🚖",href:`https://www.welcomepickups.com/`},
+    {n:"GetTransfer",i:"🚐",href:`https://gettransfer.com/en`},
+  ];
+  return [];
+}
+function pcard(l){
+  return `<a class="pcard" href="${l.href}" target="_blank" rel="noopener nofollow">
+       <div class="pico">${l.i}</div><div><b>${l.n}</b><span>Open →</span></div>
+       ${l.tp?'<span class="badge">deal</span>':''}</a>`;
+}
+function renderPackage(){
+  const k=getPkg(), hint=document.getElementById("hint");
+  if(!k.destName){ hint.textContent="⚠️ Enter your destination city and pick it from the list."; return; }
+  if(!k.depart){ hint.textContent="⚠️ Pick your start date."; return; }
+  if(!k.picks.length){ hint.textContent="⚠️ Tick at least one thing to include in your package."; return; }
+  if(k.picks.includes("flight") && !k.originName){ hint.textContent="⚠️ For flights, enter where you're flying from."; return; }
+  hint.textContent="";
+  const box=document.getElementById("results"); box.style.display="block";
+  document.getElementById("resTitle").textContent="📦 Your custom "+k.destName+" package";
+  const n=k.picks.length;
+  document.getElementById("resSub").textContent=k.destName+" · "+k.depart+(k.ret?" – "+k.ret:"")+" · "+n+" part"+(n>1?"s":"")+" — open the best sites for each.";
+  const groups=PKG_COMPONENTS.filter(c=>k.picks.includes(c.id)).map(c=>{
+    const cards=pkgProviders(c.id,k).map(pcard).join("");
+    return `<div class="pkgroup"><h4>${c.icon} ${c.label}</h4><div class="providers">${cards}</div></div>`;
+  }).join("");
+  document.getElementById("providers").innerHTML=
+    `<div style="grid-column:1/-1">
+       <button class="btn" id="pkgOpenAll" style="margin:0 0 6px">🚀 Open one site for each part</button>
+       <div style="display:flex;flex-direction:column;gap:22px;margin-top:14px">${groups}</div>
+     </div>`;
+  const oa=document.getElementById("pkgOpenAll"); if(oa) oa.onclick=openPackageTop;
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function openPackageTop(){
+  const k=getPkg();
+  const firsts=PKG_COMPONENTS.filter(c=>k.picks.includes(c.id))
+    .map(c=>{const a=pkgProviders(c.id,k);return a[0]&&a[0].href;}).filter(Boolean);
+  firsts.forEach((href,i)=>setTimeout(()=>window.open(href,"_blank","noopener"), i*250));
+}
+
 function renderResults(){
+  if(cat==="package") return renderPackage();
   const links=buildLinks(); if(!links) return;
   const p=collect();
   const box=document.getElementById("results");
@@ -522,6 +651,7 @@ function renderResults(){
   box.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function openTop(){
+  if(cat==="package") return openPackageTop();
   const links=buildLinks(); if(!links) return;
   links.slice(0,5).forEach((l,i)=>setTimeout(()=>window.open(l.href,"_blank","noopener"), i*250));
 }
@@ -588,6 +718,9 @@ function render(){
   document.getElementById("results").style.display="none";
   // "See live prices" (inline live engine) only exists for flights; hotels use the launcher
   document.getElementById("liveBtn").style.display = (cat==="flights") ? "" : "none";
+  const sb=document.getElementById("searchBtn"), ob=document.getElementById("openTopBtn");
+  if(cat==="package"){ sb.textContent="📦 Build my package"; ob.textContent="🚀 Open one for each"; }
+  else { sb.textContent="🔎 Search all sites"; ob.textContent="Open top 5 in tabs"; }
 }
 
 /* Live last-minute fares strip — real prices from our /api/deals endpoint. */
